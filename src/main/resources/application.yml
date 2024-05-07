@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    password: mypassword
+    url: jdbc:postgresql://192.168.0.111:5436/mydatabase
+    username: myuser
+  application:
+    name: backtemplate
+  jpa:
+    hibernate:
+      ddl-auto: update
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: viladevapps@gmail.com
+    password: iabn dhoj wpyc zzwu
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+mail:
+  enabled: true
+  subject:
+    account-activation: Account Activation
+    password-reset: Password Reset
+  message:
+    account-activation: Click on the link below to activate your account
+    password-reset: Click on the link below to reset your password
+auth:
+  jwt:
+    secret: mysecret
+    expiration: 86400000
+    issuer: backtemplate
+  cookie: 
+    domain: 192.168.0.111
+    path: /
+    secure: false
+    httpOnly: false
+    sameSite: None

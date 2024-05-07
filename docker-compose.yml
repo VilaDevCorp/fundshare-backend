@@ -1,0 +1,30 @@
+services:
+  db:
+    image: 'postgres:16-alpine'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=mypassword'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5436:5432'
+    volumes:
+      - db:/data/db
+  db-test:
+    image: 'postgres:16-alpine'
+    environment:
+      - 'POSTGRES_DB=mydatabase-test'
+      - 'POSTGRES_PASSWORD=mypassword'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5437:5432'
+    volumes:
+      - db-test:/data/db
+  api:
+    image: 'backtemplate'
+    ports:
+      - '8081:8080'
+    depends_on:
+      - db
+volumes:
+  db:
+  db-test:
