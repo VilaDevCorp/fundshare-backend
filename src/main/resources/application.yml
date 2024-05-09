@@ -1,10 +1,10 @@
 spring:
   datasource:
     password: mypassword
-    url: jdbc:postgresql://192.168.0.111:5436/mydatabase
-    username: myuser
+    url: jdbc:postgresql://192.168.0.111:5436/fundshare
+    username: fundshare
   application:
-    name: backtemplate
+    name: fundshare-api
   jpa:
     hibernate:
       ddl-auto: update
@@ -35,7 +35,7 @@ auth:
   jwt:
     secret: mysecret
     expiration: 86400000
-    issuer: backtemplate
+    issuer: fundshare
   cookie: 
     domain: 192.168.0.111
     path: /

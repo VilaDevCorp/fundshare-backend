@@ -1,8 +1,8 @@
 spring:
   datasource:
     password: mypassword
-    url: jdbc:postgresql://localhost:5437/mydatabase-test
-    username: myuser
+    url: jdbc:postgresql://localhost:5437/fundsharetest
+    username: fundshare
 
 mail:
   enabled: false

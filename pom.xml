@@ -10,11 +10,11 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<packaging>jar</packaging>
-	<groupId>com.template</groupId>
-	<artifactId>backtemplate</artifactId>
+	<groupId>com.viladev</groupId>
+	<artifactId>fundshare</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>backtemplate</name>
-	<description>Template for backend projects</description>
+	<name>fundshare</name>
+	<description>Fundshare project api</description>
 	<properties>
 		<java.version>17</java.version>
 	</properties>

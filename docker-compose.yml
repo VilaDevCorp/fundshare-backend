@@ -2,9 +2,9 @@ services:
   db:
     image: 'postgres:16-alpine'
     environment:
-      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_DB=fundshare'
       - 'POSTGRES_PASSWORD=mypassword'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_USER=fundshare'
     ports:
       - '5436:5432'
     volumes:
@@ -12,15 +12,15 @@ services:
   db-test:
     image: 'postgres:16-alpine'
     environment:
-      - 'POSTGRES_DB=mydatabase-test'
+      - 'POSTGRES_DB=fundsharetest'
       - 'POSTGRES_PASSWORD=mypassword'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_USER=fundshare'
     ports:
       - '5437:5432'
     volumes:
       - db-test:/data/db
   api:
-    image: 'backtemplate'
+    image: 'fundshare-api'
     ports:
       - '8081:8080'
     depends_on:
