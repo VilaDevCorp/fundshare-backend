@@ -3,6 +3,8 @@ package com.viladev.fundshare.model;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +19,7 @@ import java.util.*;
 public class ValidationCode extends BaseEntity {
 
     public static final int EXPIRATION_MINUTES = 15;
-    
+
     Random random = new Random();
 
     private String fillWithZeros(String code) {
@@ -28,6 +30,10 @@ public class ValidationCode extends BaseEntity {
             return code;
         }
     }
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     private String code = fillWithZeros(Integer.toString(random.nextInt(999999)));
     private String type;

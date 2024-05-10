@@ -27,7 +27,6 @@ public class JwtFilter extends OncePerRequestFilter {
         this.jwtUtils = jwtUtils;
     }
 
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -35,10 +34,7 @@ public class JwtFilter extends OncePerRequestFilter {
         if (request.getRequestURI().matches("/api/public/.*")) {
             filterChain.doFilter(request, response);
         } else {
-            if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+
             if (request.getCookies() == null) {
                 response.setStatus(401);
                 return;

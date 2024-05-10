@@ -1,7 +1,5 @@
 package com.viladev.fundshare;
 
-
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,8 +17,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +30,7 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.ValidationCode;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.repository.ValidationCodeRepository;
+import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.CodeErrors;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
@@ -43,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Transactional
 class AuthControllerTest {
 
 	private static final String ACTIVE_USER_EMAIL = "test@gmail.com";
@@ -64,37 +66,27 @@ class AuthControllerTest {
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired
+	private UserService userService;
+	@Autowired
 	private ValidationCodeRepository validationCodeRepository;
 
 	@Autowired
 	private MockMvc mockMvc;
 
-	@AfterAll
-	void tearDown() {
-		validationCodeRepository.deleteAll();
-		userRepository.deleteAll();
-	}
-
 	@BeforeAll
 	void initialize() throws Exception {
+
+		User user1 = userService.registerUser(ACTIVE_USER_EMAIL, ACTIVE_USER_USERNAME, ACTIVE_USER_PASSWORD);
+		userService.registerUser(INACTIVE_USER_EMAIL, INACTIVE_USER_USERNAME, INACTIVE_USER_PASSWORD);
+
+		user1.setValidated(true);
+		userRepository.save(user1);
+
+	}
+
+	@AfterAll
+	void clean() {
 		userRepository.deleteAll();
-		RegisterForm form1 = new RegisterForm(ACTIVE_USER_EMAIL, ACTIVE_USER_USERNAME, ACTIVE_USER_PASSWORD);
-		RegisterForm form2 = new RegisterForm(INACTIVE_USER_EMAIL, INACTIVE_USER_USERNAME, INACTIVE_USER_PASSWORD);
-
-		ObjectMapper obj = new ObjectMapper();
-		mockMvc.perform(post("/api/public/register")
-				.contentType("application/json")
-				.content(obj.writeValueAsString(form1)));
-		mockMvc.perform(post("/api/public/register")
-				.contentType("application/json")
-				.content(obj.writeValueAsString(form2)));
-
-		ValidationCode validationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(ACTIVE_USER_USERNAME,
-						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
-				.get(0);
-		mockMvc.perform(post("/api/public/validate/" + ACTIVE_USER_USERNAME + "/" + validationCode.getCode()));
-
 	}
 
 	@Test
@@ -123,8 +115,8 @@ class AuthControllerTest {
 		}
 
 		// We remove the quotes from the UUID (extra quotes being added)
-		UUID id = result.getData().getId();
-		User user = userRepository.findById(id).get();
+		UUID userId = result.getData().getId();
+		User user = userRepository.getReferenceById(userId);
 		PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 		assertEquals(NEW_USER_EMAIL, user.getEmail());
 		assertEquals(NEW_USER_USERNAME, user.getUsername());
@@ -261,7 +253,7 @@ class AuthControllerTest {
 	@Test
 	void When_AccountValidationWrongCode_Unauthorized() throws Exception {
 		ValidationCode validationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		mockMvc.perform(post("/api/public/validate/" + INACTIVE_USER_USERNAME + "/" + validationCode.getCode() + "1"))
@@ -271,7 +263,7 @@ class AuthControllerTest {
 	@Test
 	void When_AccountValidationExpiredCode_Gone() throws Exception {
 		List<ValidationCode> validationCodeList = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType());
 		// We take the first validation code (more recent) and we delete the rest to
 		// avoid conflicts with other tests
@@ -293,7 +285,7 @@ class AuthControllerTest {
 	@Test
 	void When_AccountValidationAlreadyUsedCode_Conflict() throws Exception {
 		ValidationCode validationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		validationCode.setUsed(true);
@@ -307,7 +299,7 @@ class AuthControllerTest {
 	@Test
 	void When_AccountValidationSuccesful_Ok() throws Exception {
 		ValidationCode validationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		mockMvc.perform(post("/api/public/validate/" + INACTIVE_USER_USERNAME + "/" + validationCode.getCode()))
@@ -315,7 +307,7 @@ class AuthControllerTest {
 		User user = userRepository.findByUsername(INACTIVE_USER_USERNAME);
 		assertTrue(user.isValidated());
 		validationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		assertTrue(validationCode.isUsed());
@@ -328,13 +320,13 @@ class AuthControllerTest {
 	@Test
 	void When_AccountValidationResendCode_Ok() throws Exception {
 		ValidationCode oldValidationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		mockMvc.perform(post("/api/public/validate/" + INACTIVE_USER_USERNAME + "/resend"))
 				.andExpect(status().isOk());
 		ValidationCode newValidationCode = validationCodeRepository
-				.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+				.findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 						ValidationCodeTypeEnum.ACTIVATE_ACCOUNT.getType())
 				.get(0);
 		assertNotEquals(oldValidationCode.getCode(), newValidationCode.getCode());
@@ -345,7 +337,7 @@ class AuthControllerTest {
 		mockMvc.perform(post("/api/public/forgottenpassword/" + ACTIVE_USER_USERNAME))
 				.andExpect(status().isOk());
 
-		ValidationCode validationCode = validationCodeRepository.findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(
+		ValidationCode validationCode = validationCodeRepository.findByUserUsernameAndTypeOrderByCreatedAtDesc(
 				ACTIVE_USER_USERNAME, ValidationCodeTypeEnum.RESET_PASSWORD.getType()).get(0);
 
 		mockMvc.perform(post("/api/public/resetpassword/" + ACTIVE_USER_USERNAME + "/" + validationCode.getCode())
@@ -371,7 +363,7 @@ class AuthControllerTest {
 	// @Test
 	// void When_AccountValidation_Conflict() throws Exception {
 	// ValidationCode validationCode = validationCodeRepository
-	// .findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
+	// .findByUserUsernameAndTypeOrderByCreatedAtDesc(INACTIVE_USER_USERNAME,
 	// false,
 	// ValidationCodeTypeEnum.ACTIVATE_ACCOUNT)
 	// .get(0);

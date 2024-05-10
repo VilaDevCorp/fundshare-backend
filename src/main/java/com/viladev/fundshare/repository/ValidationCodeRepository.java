@@ -9,7 +9,7 @@ import com.viladev.fundshare.model.ValidationCode;
 
 public interface ValidationCodeRepository extends JpaRepository<ValidationCode, UUID> {
 
-    List<ValidationCode> findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(String username,
+    List<ValidationCode> findByUserUsernameAndTypeOrderByCreatedAtDesc(String username,
             String type);
 
 }

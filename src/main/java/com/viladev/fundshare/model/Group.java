@@ -27,8 +27,9 @@ public class Group extends BaseEntity {
     @ManyToMany(mappedBy = "groups")
     private List<User> users;
 
-    public Group(String name, String description) {
+    public Group(String name, String description, User createdBy) {
         this.name = name;
         this.description = description;
+        this.createdBy = createdBy;
     }
 }

@@ -26,6 +26,7 @@ import com.viladev.fundshare.exceptions.InvalidCredentialsException;
 import com.viladev.fundshare.exceptions.NotValidatedAccountException;
 import com.viladev.fundshare.exceptions.SendEmailException;
 import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
+import com.viladev.fundshare.model.CustomUserDetail;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.ValidationCode;
 import com.viladev.fundshare.repository.UserRepository;
@@ -74,7 +75,7 @@ public class UserService {
             throw new EmailAlreadyInUseException("An user is already using this email");
         }
         if (username == null || password == null || email == null) {
-            throw new EmptyFormFieldsException("There are mandatory fields that are empty");
+            throw new EmptyFormFieldsException(null);
         }
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         String encodedPassword = passwordEncoder.encode(password);
@@ -87,7 +88,7 @@ public class UserService {
     public AuthResult authenticate(String username, String password)
             throws InvalidCredentialsException, EmptyFormFieldsException, NotValidatedAccountException {
         if (username == null || password == null) {
-            throw new EmptyFormFieldsException("There are mandatory fields that are empty");
+            throw new EmptyFormFieldsException(null);
         }
         User user = userRepository.findByUsername(username);
         // We return invalid credentials and not user not found to avoid user
@@ -116,10 +117,11 @@ public class UserService {
             throws InstanceNotFoundException, SendEmailException {
         User user = userRepository.findByUsername(username);
         if (user == null) {
-            throw new InstanceNotFoundException("User not found");
+            throw new InstanceNotFoundException();
         }
         ValidationCode validationCode = new ValidationCode(type);
         validationCode.setCreatedBy(user);
+        validationCode.setUser(user);
         validationCodeRepository.save(validationCode);
 
         try {
@@ -143,9 +145,9 @@ public class UserService {
             IncorrectValidationCodeException {
 
         List<ValidationCode> validationCodeList = validationCodeRepository
-                .findByCreatedByUsernameAndTypeOrderByCreatedAtDesc(username, type.getType());
+                .findByUserUsernameAndTypeOrderByCreatedAtDesc(username, type.getType());
         if (validationCodeList.isEmpty()) {
-            throw new InstanceNotFoundException("Validation code not found");
+            throw new InstanceNotFoundException();
         }
         ValidationCode lastValidationCode = validationCodeList.get(0);
         Calendar expirationDate = (Calendar) lastValidationCode.getCreatedAt().clone();
@@ -178,7 +180,14 @@ public class UserService {
         User user = userRepository.findByUsername(username);
         user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
         userRepository.save(user);
+    }
 
+    public User getUser(String username) throws InstanceNotFoundException {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new InstanceNotFoundException();
+        }
+        return user;
     }
 
 }

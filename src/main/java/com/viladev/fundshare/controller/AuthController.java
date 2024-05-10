@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.viladev.fundshare.auth.AuthResult;
 import com.viladev.fundshare.exceptions.AlreadyUsedValidationCodeException;
 import com.viladev.fundshare.exceptions.EmailAlreadyInUseException;
@@ -23,6 +22,7 @@ import com.viladev.fundshare.exceptions.ExpiredValidationCodeException;
 import com.viladev.fundshare.exceptions.IncorrectValidationCodeException;
 import com.viladev.fundshare.exceptions.InvalidCredentialsException;
 import com.viladev.fundshare.exceptions.NotValidatedAccountException;
+import com.viladev.fundshare.exceptions.SendEmailException;
 import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
 import com.viladev.fundshare.forms.LoginForm;
 import com.viladev.fundshare.forms.RegisterForm;
@@ -67,7 +67,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody RegisterForm registerForm) {
+    public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody RegisterForm registerForm)
+            throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
         ResponseEntity<ApiResponse<User>> response = null;
         try {
             User newUser = userService.registerUser(registerForm.getEmail(), registerForm.getUsername(),
@@ -82,31 +83,21 @@ public class AuthController {
             response = ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(CodeErrors.USERNAME_ALREADY_IN_USE, e.getMessage()));
 
-        } catch (EmptyFormFieldsException e) {
-            response = ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, e.getMessage()));
-
-        } catch (Exception e) {
-            response = ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
         }
+
         return response;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginForm loginForm, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginForm loginForm, HttpServletResponse response)
+            throws EmptyFormFieldsException {
         String csrfToken = UUID.randomUUID().toString();
         AuthResult authResult = null;
         try {
             authResult = userService.authenticate(loginForm.getUsername(), loginForm.getPassword());
             if (authResult == null) {
-                return ResponseEntity.internalServerError()
-                        .body(new ApiResponse<>(null, "An error occurred while trying to authenticate"));
+                throw new InternalError();
             }
-
-        } catch (EmptyFormFieldsException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, e.getMessage()));
 
         } catch (InvalidCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -115,9 +106,6 @@ public class AuthController {
         } catch (NotValidatedAccountException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(CodeErrors.NOT_VALIDATED_ACCOUNT, e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
         }
         Cookie cookie = new Cookie("JWT_TOKEN", authResult.getJwtToken());
         cookie.setDomain(cookieDomain);
@@ -131,16 +119,12 @@ public class AuthController {
 
     @PostMapping("/validate/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Boolean>> validateAccount(@PathVariable String username,
-            @PathVariable String validationCode) {
+            @PathVariable String validationCode) throws InstanceNotFoundException, EmptyFormFieldsException {
         if (username == null || validationCode == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(null);
+            throw new EmptyFormFieldsException(null);
         }
         try {
             userService.activateAccount(username, validationCode);
-        } catch (InstanceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage()));
         } catch (ExpiredValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(new ApiResponse<>(CodeErrors.EXPIRED_VALIDATION_CODE, e.getMessage()));
@@ -150,63 +134,40 @@ public class AuthController {
         } catch (IncorrectValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>(true));
     }
 
     @PostMapping("/validate/{username}/resend")
-    public ResponseEntity<ApiResponse<Boolean>> resendValidationCode(@PathVariable String username) {
+    public ResponseEntity<ApiResponse<Boolean>> resendValidationCode(@PathVariable String username)
+            throws EmptyFormFieldsException, InstanceNotFoundException, SendEmailException {
         if (username == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(null);
+            throw new EmptyFormFieldsException(null);
         }
-        try {
-            userService.createValidationCode(username, ValidationCodeTypeEnum.ACTIVATE_ACCOUNT);
-        } catch (InstanceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage()));
+        userService.createValidationCode(username, ValidationCodeTypeEnum.ACTIVATE_ACCOUNT);
 
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
-        }
         return ResponseEntity.ok().body(new ApiResponse<>(true));
     }
 
     @PostMapping("/forgottenpassword/{username}")
-    public ResponseEntity<ApiResponse<Boolean>> sendResetPasswordCode(@PathVariable String username) {
+    public ResponseEntity<ApiResponse<Boolean>> sendResetPasswordCode(@PathVariable String username)
+            throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
         if (username == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, "There are mandatory fields that are empty"));
+            throw new EmptyFormFieldsException(null);
         }
-        try {
-            userService.createValidationCode(username, ValidationCodeTypeEnum.RESET_PASSWORD);
-        } catch (InstanceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage()));
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
-        }
+        userService.createValidationCode(username, ValidationCodeTypeEnum.RESET_PASSWORD);
         return ResponseEntity.ok().body(new ApiResponse<>(true));
     }
 
     @PostMapping("/resetpassword/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Boolean>> resetPassword(@PathVariable String username,
-            @PathVariable String validationCode, @RequestBody String newPassword) {
+            @PathVariable String validationCode, @RequestBody String newPassword)
+            throws InstanceNotFoundException, EmptyFormFieldsException {
         if (username == null || validationCode == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, "There are mandatory fields that are empty"));
+            throw new EmptyFormFieldsException(null);
         }
         try {
             userService.resetPassword(username, validationCode, newPassword);
-        } catch (InstanceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage()));
         } catch (ExpiredValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(new ApiResponse<>(CodeErrors.EXPIRED_VALIDATION_CODE, e.getMessage()));
@@ -216,9 +177,6 @@ public class AuthController {
         } catch (IncorrectValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>(null, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>(true));
     }
