@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.utils.ApiResponse;
 
@@ -27,7 +28,7 @@ public class ControllerExceptionHandler {
                 .body(new ApiResponse<>(null, errorMessage));
     }
 
-    @ExceptionHandler(value = SecurityException.class)
+    @ExceptionHandler(value = NotAllowedResourceException.class)
     public ResponseEntity<ApiResponse<User>> notAllowedResourceError(Exception e) {
         String errorMessage = e.getMessage() == null ? "The user doesn't have permissions to do this operation"
                 : e.getMessage();

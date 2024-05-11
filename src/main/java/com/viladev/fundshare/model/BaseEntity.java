@@ -27,4 +27,15 @@ public class BaseEntity {
     @JoinColumn(name = "createdBy")
     User createdBy;
 
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        BaseEntity other = (BaseEntity) obj;
+        return this.id.equals(other.id);
+    }
+
 }

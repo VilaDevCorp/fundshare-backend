@@ -15,6 +15,12 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Request extends BaseEntity {
 
+
+    public Request(Group group, User user) {
+        this.group = group;
+        this.user = user;
+    }
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "group_id")
     Group group;

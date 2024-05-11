@@ -58,4 +58,15 @@ public class User extends BaseEntity {
         this.password = password;
     }
 
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        User user = (User) obj;
+        return username.equals(user.username);
+    }
+
 }
