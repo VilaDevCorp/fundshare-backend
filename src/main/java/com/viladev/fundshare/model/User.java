@@ -45,11 +45,9 @@ public class User extends BaseEntity {
 
     @ManyToMany
     @JoinTable(name = "users_groups", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "group_id"))
-    @JsonIgnore
     private List<Group> groups;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private Set<ValidationCode> validationCodes = new HashSet<>();
 
     public User(String email, String username, String password) {

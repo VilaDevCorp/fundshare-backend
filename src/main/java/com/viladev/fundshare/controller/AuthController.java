@@ -1,7 +1,5 @@
 package com.viladev.fundshare.controller;
 
-import java.util.UUID;
-
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +25,7 @@ import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
 import com.viladev.fundshare.forms.LoginForm;
 import com.viladev.fundshare.forms.RegisterForm;
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.dto.UserDto;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.CodeErrors;
@@ -67,31 +66,28 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody RegisterForm registerForm)
+    public ResponseEntity<ApiResponse<UserDto>> registerUser(@RequestBody RegisterForm registerForm)
             throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
-        ResponseEntity<ApiResponse<User>> response = null;
         try {
             User newUser = userService.registerUser(registerForm.getEmail(), registerForm.getUsername(),
                     registerForm.getPassword());
-            response = ResponseEntity.ok().body(new ApiResponse<>(newUser));
+            return ResponseEntity.ok().body(new ApiResponse<>(new UserDto(newUser)));
 
         } catch (EmailAlreadyInUseException e) {
-            response = ResponseEntity.status(HttpStatus.CONFLICT)
+            return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(CodeErrors.EMAIL_ALREADY_IN_USE, e.getMessage()));
 
         } catch (UsernameAlreadyInUseException e) {
-            response = ResponseEntity.status(HttpStatus.CONFLICT)
+            return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(CodeErrors.USERNAME_ALREADY_IN_USE, e.getMessage()));
 
         }
 
-        return response;
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginForm loginForm, HttpServletResponse response)
             throws EmptyFormFieldsException {
-        String csrfToken = UUID.randomUUID().toString();
         AuthResult authResult = null;
         try {
             authResult = userService.authenticate(loginForm.getUsername(), loginForm.getPassword());
@@ -114,14 +110,14 @@ public class AuthController {
         cookie.setSecure(cookieSecure);
         cookie.setAttribute("SameSite", cookieSameSite);
         response.addCookie(cookie);
-        return ResponseEntity.ok().body(new ApiResponse<>(csrfToken));
+        return ResponseEntity.ok().body(new ApiResponse<>(authResult.getCsrfToken().toString()));
     }
 
     @PostMapping("/validate/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Boolean>> validateAccount(@PathVariable String username,
             @PathVariable String validationCode) throws InstanceNotFoundException, EmptyFormFieldsException {
         if (username == null || validationCode == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         try {
             userService.activateAccount(username, validationCode);
@@ -135,28 +131,28 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
         }
-        return ResponseEntity.ok().body(new ApiResponse<>(true));
+        return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
     @PostMapping("/validate/{username}/resend")
     public ResponseEntity<ApiResponse<Boolean>> resendValidationCode(@PathVariable String username)
             throws EmptyFormFieldsException, InstanceNotFoundException, SendEmailException {
         if (username == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         userService.createValidationCode(username, ValidationCodeTypeEnum.ACTIVATE_ACCOUNT);
 
-        return ResponseEntity.ok().body(new ApiResponse<>(true));
+        return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
     @PostMapping("/forgottenpassword/{username}")
     public ResponseEntity<ApiResponse<Boolean>> sendResetPasswordCode(@PathVariable String username)
             throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
         if (username == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         userService.createValidationCode(username, ValidationCodeTypeEnum.RESET_PASSWORD);
-        return ResponseEntity.ok().body(new ApiResponse<>(true));
+        return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
     @PostMapping("/resetpassword/{username}/{validationCode}")
@@ -164,7 +160,7 @@ public class AuthController {
             @PathVariable String validationCode, @RequestBody String newPassword)
             throws InstanceNotFoundException, EmptyFormFieldsException {
         if (username == null || validationCode == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         try {
             userService.resetPassword(username, validationCode, newPassword);
@@ -178,6 +174,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
         }
-        return ResponseEntity.ok().body(new ApiResponse<>(true));
+        return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 }

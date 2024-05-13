@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +22,6 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserRepository;
-import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
@@ -85,6 +83,7 @@ class GroupControllerTest {
 
 	@Autowired
 	private RequestRepository requestRepository;
+
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -190,7 +189,7 @@ class GroupControllerTest {
 	@Test
 	void When_EditGroupNotAllowed_Forbidden() throws Exception {
 
-		Group group1 = groupService.getGroup(GROUP_1_ID);
+		Group group1 = groupService.getGroupById(GROUP_1_ID);
 
 		GroupForm form = new GroupForm(group1.getId(), UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
 
@@ -231,6 +230,19 @@ class GroupControllerTest {
 		Group group = groupRepository.getReferenceById(GROUP_1_ID);
 		assertEquals(UPDATED_GROUP_NAME, group.getName());
 		assertEquals(UPDATED_GROUP_DESCRIPTION, group.getDescription());
+	}
+
+	@WithMockUser(username = USER_1_USERNAME)
+	@Test
+	void When_DeleteGroupSuccesful_Ok() throws Exception {
+		mockMvc.perform(delete("/api/group/" + GROUP_1_ID)).andExpect(status().isOk());
+		assertFalse(groupRepository.findById(GROUP_1_ID).isPresent());
+	}
+
+	@WithMockUser(username = USER_2_USERNAME)
+	@Test
+	void When_DeleteGroupByNotCreator_Forbidden() throws Exception {
+		mockMvc.perform(delete("/api/group/" + GROUP_1_ID)).andExpect(status().isForbidden());
 	}
 
 	@WithMockUser(username = USER_1_USERNAME)
@@ -380,11 +392,54 @@ class GroupControllerTest {
 		assertFalse(group.getUsers().contains(user));
 	}
 
+	@WithMockUser(username = USER_3_USERNAME)
+	@Test
+	void When_KickByNotCreatorUser_Forbidden() throws Exception {
+
+		Group group = groupRepository.getReferenceById(GROUP_1_ID);
+		List<User> newUsers = new ArrayList<>(group.getUsers());
+		User user = userRepository.findByUsername(USER_2_USERNAME);
+		newUsers.add(user);
+		group.setUsers(newUsers);
+		groupRepository.save(group);
+		mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
+				.andExpect(status().isForbidden());
+	}
+
+	@WithMockUser(username = USER_2_USERNAME)
+	@Test
+	void When_KickYourSelf_Ok() throws Exception {
+
+		Group group = groupRepository.getReferenceById(GROUP_1_ID);
+		List<User> newUsers = new ArrayList<>(group.getUsers());
+		User user = userRepository.findByUsername(USER_2_USERNAME);
+		newUsers.add(user);
+		group.setUsers(newUsers);
+		groupRepository.save(group);
+		mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME)).andExpect(status().isOk());
+		group = groupRepository.getReferenceById(GROUP_1_ID);
+		assertFalse(group.getUsers().contains(user));
+	}
+
 	@WithMockUser(username = USER_1_USERNAME)
 	@Test
-	void When_KickFromGroupCreator_Forbidden() throws Exception {
-		mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_1_USERNAME))
-				.andExpect(status().isForbidden());
+	void When_KickCreatorFromGroup_Forbidden() throws Exception {
+		String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_1_USERNAME))
+				.andExpect(status().isForbidden()).andReturn().getResponse()
+				.getContentAsString();
+		ApiResponse<Void> result = null;
+		TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+		};
+		ObjectMapper obj = new ObjectMapper();
+
+		try {
+			result = obj.readValue(resultString, typeReference);
+		} catch (Exception e) {
+			assertTrue(false, "Error parsing response");
+		}
+		String errorCode = result.getErrorCode();
+		assertEquals(CodeErrors.KICKED_CREATOR, errorCode);
+
 	}
 
 	@WithMockUser(username = USER_1_USERNAME)

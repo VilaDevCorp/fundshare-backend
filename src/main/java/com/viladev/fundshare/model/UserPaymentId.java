@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Embeddable
-@NoArgsConstructor
 @Getter
 @Setter
-public class UserPaymentId implements Serializable{
+@NoArgsConstructor
+public class UserPaymentId implements Serializable {
 
     UUID userId;
     UUID paymentId;
@@ -21,8 +21,4 @@ public class UserPaymentId implements Serializable{
         this.userId = userId;
         this.paymentId = paymentId;
     }
-
-   
-
-  
 }

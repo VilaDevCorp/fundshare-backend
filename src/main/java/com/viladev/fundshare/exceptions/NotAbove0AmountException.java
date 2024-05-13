@@ -3,8 +3,8 @@ package com.viladev.fundshare.exceptions;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class ExpiredValidationCodeException extends Exception {
-    public ExpiredValidationCodeException(String message) {
+public class NotAbove0AmountException extends Exception {
+    public NotAbove0AmountException(String message) {
         super(message);
     }
 }

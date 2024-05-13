@@ -115,8 +115,8 @@ class AuthControllerTest {
 		}
 
 		// We remove the quotes from the UUID (extra quotes being added)
-		UUID userId = result.getData().getId();
-		User user = userRepository.getReferenceById(userId);
+		String username = result.getData().getUsername();
+		User user = userRepository.findByUsername(username);
 		PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 		assertEquals(NEW_USER_EMAIL, user.getEmail());
 		assertEquals(NEW_USER_USERNAME, user.getUsername());

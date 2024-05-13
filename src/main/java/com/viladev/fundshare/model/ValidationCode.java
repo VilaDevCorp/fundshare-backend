@@ -31,7 +31,7 @@ public class ValidationCode extends BaseEntity {
         }
     }
 
-    @ManyToOne
+    @ManyToOne (optional = false)
     @JoinColumn(name = "user_id")
     private User user;
 

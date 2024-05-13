@@ -15,6 +15,7 @@ public class CodeErrors {
     public static final String ALREADY_INVITED_USER = "ALREADY_INVITED_USER";
     public static final String ALREADY_MEMBER_GROUP = "ALREADY_MEMBER_GROUP";
     public static final String NOT_GROUP_MEMBER = "NOT_GROUP_MEMBER";
-    
+    public static final String KICKED_CREATOR = "KICKED_CREATOR";
+    public static final String NOT_ABOVE_0_AMOUNT = "NOT_ABOVE_0_AMOUNT";
 
 }

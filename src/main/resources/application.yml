@@ -1,11 +1,12 @@
 spring:
   datasource:
     password: mypassword
-    url: jdbc:postgresql://192.168.0.111:5436/fundshare
+    url: jdbc:postgresql://localhost:5436/fundshare
     username: fundshare
   application:
     name: fundshare-api
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
   session:
@@ -37,8 +38,13 @@ auth:
     expiration: 86400000
     issuer: fundshare
   cookie: 
-    domain: 192.168.0.111
+    domain: localhost
     path: /
     secure: false
     httpOnly: false
     sameSite: None
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG

@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.viladev.fundshare.auth.AuthResult;
 import com.viladev.fundshare.auth.JwtUtils;
@@ -26,7 +27,6 @@ import com.viladev.fundshare.exceptions.InvalidCredentialsException;
 import com.viladev.fundshare.exceptions.NotValidatedAccountException;
 import com.viladev.fundshare.exceptions.SendEmailException;
 import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
-import com.viladev.fundshare.model.CustomUserDetail;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.ValidationCode;
 import com.viladev.fundshare.repository.UserRepository;
@@ -34,6 +34,7 @@ import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 @Service
+@Transactional
 public class UserService {
 
     private final AuthenticationManager authenticationManager;
@@ -75,20 +76,22 @@ public class UserService {
             throw new EmailAlreadyInUseException("An user is already using this email");
         }
         if (username == null || password == null || email == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         String encodedPassword = passwordEncoder.encode(password);
         User user = userRepository.save(new User(email, username, encodedPassword));
-        createValidationCode(user.getUsername(), ValidationCodeTypeEnum.ACTIVATE_ACCOUNT);
+        createValidationCode(user.getUsername(),
+                ValidationCodeTypeEnum.ACTIVATE_ACCOUNT);
 
         return user;
     }
 
+    @Transactional(readOnly = true)
     public AuthResult authenticate(String username, String password)
             throws InvalidCredentialsException, EmptyFormFieldsException, NotValidatedAccountException {
         if (username == null || password == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         User user = userRepository.findByUsername(username);
         // We return invalid credentials and not user not found to avoid user
@@ -180,14 +183,6 @@ public class UserService {
         User user = userRepository.findByUsername(username);
         user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
         userRepository.save(user);
-    }
-
-    public User getUser(String username) throws InstanceNotFoundException {
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            throw new InstanceNotFoundException();
-        }
-        return user;
     }
 
 }

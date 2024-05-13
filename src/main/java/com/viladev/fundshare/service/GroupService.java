@@ -16,7 +16,6 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
-import com.viladev.fundshare.model.CustomUserDetail;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
@@ -47,7 +46,7 @@ public class GroupService {
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
         User creator = userRepository.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
         if (name == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         Group group = new Group(name, description, creator);
         group.setUsers(List.of(creator));
@@ -57,7 +56,7 @@ public class GroupService {
     public Group editGroup(UUID id, String name, String description)
             throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
         if (id == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
         FilterUtils.checkIfCreator(group);
@@ -71,15 +70,22 @@ public class GroupService {
         return groupRepository.save(group);
     }
 
-    public Group getGroup(UUID id) throws InstanceNotFoundException {
+    @Transactional(readOnly = true)
+    public Group getGroupById(UUID id) throws InstanceNotFoundException {
         return groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+    }
+
+    public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
+        Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        FilterUtils.checkIfCreator(group);
+        groupRepository.delete(group);
     }
 
     public Request createRequest(UUID groupId, String username)
             throws InstanceNotFoundException, NotAllowedResourceException, UserAlreadyPresentException,
             UserAlreadyInvitedException, EmptyFormFieldsException {
         if (groupId == null || username == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
@@ -103,17 +109,19 @@ public class GroupService {
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException,
             KickedCreatorException, UserKickedIsNotMember {
         if (groupId == null || username == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
-        FilterUtils.checkIfCreator(group);
         User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new InstanceNotFoundException("User not found");
         }
+        if (!FilterUtils.checkIfLoggedUser(user)) {
+            FilterUtils.checkIfCreator(group);
+        }
         if (group.getCreatedBy().equals(user)) {
-            throw new KickedCreatorException(null);
+            throw new KickedCreatorException();
         }
         if (!group.getUsers().contains(user)) {
             throw new UserKickedIsNotMember(null);
@@ -125,7 +133,7 @@ public class GroupService {
     public void respondRequest(UUID requestId, boolean accept)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
         if (requestId == null) {
-            throw new EmptyFormFieldsException(null);
+            throw new EmptyFormFieldsException();
         }
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new InstanceNotFoundException("Request not found"));

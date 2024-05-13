@@ -4,11 +4,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+@NamedEntityGraph(name = "Group.users")
 @Entity
 @Table(name = "groups")
 @Getter
@@ -34,7 +34,6 @@ public class Group extends BaseEntity {
     private List<User> users;
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private Set<Request> requests = new HashSet<>();
 
     public Group(String name, String description, User createdBy) {
