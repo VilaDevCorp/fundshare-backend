@@ -3,6 +3,7 @@ package com.viladev.fundshare.model;
 import java.util.HashSet;
 import java.util.Set;
 
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,6 +27,7 @@ public class Payment extends BaseEntity {
     @ManyToOne(optional = true)
     @JoinColumn(name = "group_id")
     Group group;
+
     @OneToMany(mappedBy = "payment", orphanRemoval = true, cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     Set<UserPayment> userPayments = new HashSet<>();
 

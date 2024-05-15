@@ -3,7 +3,7 @@ package com.viladev.fundshare.model.dto;
 import java.util.Calendar;
 import java.util.UUID;
 
-import com.fasterxml.jackson.databind.JsonSerializable.Base;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.viladev.fundshare.model.BaseEntity;
 
 import lombok.Getter;
@@ -13,6 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class BaseEntityDto {
 
     UUID id;

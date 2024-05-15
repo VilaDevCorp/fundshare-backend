@@ -17,6 +17,8 @@ public class PaymentDto extends BaseEntityDto {
 
     GroupDto group;
 
+    Double totalAmount;
+
     Set<UserPaymentDto> userPayments;
 
     public PaymentDto(Payment payment) {
@@ -24,9 +26,12 @@ public class PaymentDto extends BaseEntityDto {
         this.group = payment.getGroup() != null ? new GroupDto(payment.getGroup()) : null;
         if (payment.getUserPayments() != null && !payment.getUserPayments().isEmpty()) {
             Set<UserPaymentDto> userPayments = new HashSet<>();
+            Double totalAmount = 0.0;
             for (UserPayment userPayment : payment.getUserPayments()) {
                 userPayments.add(new UserPaymentDto(userPayment, false));
+                totalAmount += userPayment.getAmount();
             }
+            this.totalAmount = totalAmount;
             this.userPayments = userPayments;
         }
     }

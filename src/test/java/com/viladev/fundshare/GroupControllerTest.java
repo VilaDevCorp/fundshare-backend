@@ -1,7 +1,9 @@
 package com.viladev.fundshare;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,25 +12,33 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viladev.fundshare.forms.GroupForm;
+import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.RequestForm;
+import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
-import com.viladev.fundshare.service.UserService;
+import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.CodeErrors;
 
+import jakarta.persistence.EntityManager;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,14 +47,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Transactional
 class GroupControllerTest {
 
 	private static final String USER_1_EMAIL = "test@gmail.com";
@@ -75,8 +85,6 @@ class GroupControllerTest {
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired
-	private UserService userService;
-	@Autowired
 	private GroupService groupService;
 	@Autowired
 	private GroupRepository groupRepository;
@@ -84,13 +92,21 @@ class GroupControllerTest {
 	@Autowired
 	private RequestRepository requestRepository;
 
+	@Autowired
+	private PaymentService paymentService;
 
 	@Autowired
 	private MockMvc mockMvc;
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
-	@BeforeAll
+	private TransactionTemplate transactionTemplate;
+
+	@BeforeEach
 	@WithMockUser(username = USER_1_USERNAME)
 	void initialize() throws Exception {
+		transactionTemplate = new TransactionTemplate(transactionManager);
+
 		User user1 = new User(USER_1_EMAIL, USER_1_USERNAME, USER_1_PASSWORD);
 		user1.setValidated(true);
 		User user2 = new User(USER_2_EMAIL, USER_2_USERNAME, USER_2_PASSWORD);
@@ -105,7 +121,7 @@ class GroupControllerTest {
 		GROUP_1_ID = group1.getId();
 	}
 
-	@AfterAll
+	@AfterEach
 	void clean() {
 		groupRepository.deleteAll();
 		userRepository.deleteAll();
@@ -146,9 +162,8 @@ class GroupControllerTest {
 			assertTrue(false, "Error parsing response");
 		}
 
-		// We remove the quotes from the UUID (extra quotes being added)
 		UUID groupId = result.getData().getId();
-		Group group = groupRepository.getReferenceById(groupId);
+		Group group = groupRepository.findById(groupId).orElse(null);
 		assertEquals(GROUP_2_NAME, group.getName());
 		assertEquals(GROUP_2_DESCRIPTION, group.getDescription());
 
@@ -227,7 +242,7 @@ class GroupControllerTest {
 				.contentType("application/json")
 				.content(obj.writeValueAsString(form))).andExpect(status().isOk());
 
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		assertEquals(UPDATED_GROUP_NAME, group.getName());
 		assertEquals(UPDATED_GROUP_DESCRIPTION, group.getDescription());
 	}
@@ -235,7 +250,45 @@ class GroupControllerTest {
 	@WithMockUser(username = USER_1_USERNAME)
 	@Test
 	void When_DeleteGroupSuccesful_Ok() throws Exception {
+
+		// we add users and payments to the group to check that they are deleted and the
+		// balances are updated
+		transactionTemplate.execute(status -> {
+			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			Set<User> newUsers = new HashSet<>(group.getUsers());
+			newUsers.add(userRepository.findByUsername(USER_2_USERNAME));
+			newUsers.add(userRepository.findByUsername(USER_3_USERNAME));
+			group.setUsers(newUsers);
+			groupRepository.save(group);
+			return null;
+		});
+		UserPaymentForm uPayment1 = new UserPaymentForm(USER_2_USERNAME, 10.0);
+		UserPaymentForm uPayment2 = new UserPaymentForm(USER_3_USERNAME, 5.0);
+		UserPaymentForm uPayment3 = new UserPaymentForm(USER_2_USERNAME, 20.0);
+		UserPaymentForm uPayment4 = new UserPaymentForm(USER_3_USERNAME, 10.0);
+
+		PaymentForm payment1 = new PaymentForm(GROUP_1_ID, Set.of(uPayment1, uPayment2));
+		PaymentForm payment2 = new PaymentForm(GROUP_1_ID, Set.of(uPayment3, uPayment4));
+		paymentService.createPayment(payment1);
+		paymentService.createPayment(payment2);
+
+		User user1 = userRepository.findByUsername(USER_1_USERNAME);
+		User user2 = userRepository.findByUsername(USER_2_USERNAME);
+		User user3 = userRepository.findByUsername(USER_3_USERNAME);
+
+		assertEquals(-45.0, user1.getBalance());
+		assertEquals(30.0, user2.getBalance());
+		assertEquals(15.0, user3.getBalance());
+
 		mockMvc.perform(delete("/api/group/" + GROUP_1_ID)).andExpect(status().isOk());
+
+		user1 = userRepository.findByUsername(USER_1_USERNAME);
+		user2 = userRepository.findByUsername(USER_2_USERNAME);
+		user3 = userRepository.findByUsername(USER_3_USERNAME);
+
+		assertEquals(0.0, user1.getBalance());
+		assertEquals(0.0, user2.getBalance());
+		assertEquals(0.0, user3.getBalance());
 		assertFalse(groupRepository.findById(GROUP_1_ID).isPresent());
 	}
 
@@ -304,12 +357,15 @@ class GroupControllerTest {
 	@WithMockUser(username = USER_1_USERNAME)
 	@Test
 	void When_InviteToGroupUserAlreadyPresent_Conflict() throws Exception {
-
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
-		List<User> newUsers = new ArrayList<>(group.getUsers());
-		newUsers.add(userRepository.findByUsername(USER_2_USERNAME));
-		group.setUsers(newUsers);
-		groupRepository.save(group);
+		// Add user2 to group
+		transactionTemplate.execute(status -> {
+			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			Set<User> newUsers = new HashSet<>(group.getUsers());
+			newUsers.add(userRepository.findByUsername(USER_2_USERNAME));
+			group.setUsers(newUsers);
+			groupRepository.save(group);
+			return null;
+		});
 		RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
 
 		ObjectMapper obj = new ObjectMapper();
@@ -337,7 +393,7 @@ class GroupControllerTest {
 	@Test
 	void When_InviteToGroupUserAlreadyInvited_Conflict() throws Exception {
 		RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
-		requestRepository.save(new Request(groupRepository.getReferenceById(GROUP_1_ID),
+		requestRepository.save(new Request(groupRepository.findById(GROUP_1_ID).orElse(null),
 				userRepository.findByUsername(USER_2_USERNAME)));
 		ObjectMapper obj = new ObjectMapper();
 
@@ -381,14 +437,14 @@ class GroupControllerTest {
 	@Test
 	void When_KickFromGroupUser_Ok() throws Exception {
 
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
-		List<User> newUsers = new ArrayList<>(group.getUsers());
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+		Set<User> newUsers = new HashSet<>(group.getUsers());
 		User user = userRepository.findByUsername(USER_2_USERNAME);
 		newUsers.add(user);
 		group.setUsers(newUsers);
 		groupRepository.save(group);
 		mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME)).andExpect(status().isOk());
-		group = groupRepository.getReferenceById(GROUP_1_ID);
+		group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		assertFalse(group.getUsers().contains(user));
 	}
 
@@ -396,8 +452,8 @@ class GroupControllerTest {
 	@Test
 	void When_KickByNotCreatorUser_Forbidden() throws Exception {
 
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
-		List<User> newUsers = new ArrayList<>(group.getUsers());
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+		Set<User> newUsers = new HashSet<>(group.getUsers());
 		User user = userRepository.findByUsername(USER_2_USERNAME);
 		newUsers.add(user);
 		group.setUsers(newUsers);
@@ -410,14 +466,14 @@ class GroupControllerTest {
 	@Test
 	void When_KickYourSelf_Ok() throws Exception {
 
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
-		List<User> newUsers = new ArrayList<>(group.getUsers());
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+		Set<User> newUsers = new HashSet<>(group.getUsers());
 		User user = userRepository.findByUsername(USER_2_USERNAME);
 		newUsers.add(user);
 		group.setUsers(newUsers);
 		groupRepository.save(group);
 		mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME)).andExpect(status().isOk());
-		group = groupRepository.getReferenceById(GROUP_1_ID);
+		group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		assertFalse(group.getUsers().contains(user));
 	}
 
@@ -478,29 +534,30 @@ class GroupControllerTest {
 	@WithMockUser(username = USER_2_USERNAME)
 	@Test
 	void When_AcceptRequest_Ok() throws Exception {
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
 		User user = userRepository.findByUsername(USER_2_USERNAME);
-		Request request = new Request(group,
-				user);
-		request = requestRepository.save(request);
-
-		mockMvc.perform(post("/api/group/request/" + request.getId() + "?accept=true")).andExpect(status().isOk());
-		group = groupRepository.getReferenceById(GROUP_1_ID);
-		assertTrue(group.getUsers().contains(user));
-		assertFalse(requestRepository.findById(GROUP_1_ID).isPresent());
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+		UUID requestId = transactionTemplate.execute(status -> {
+			Request request = new Request(group, user);
+			requestRepository.save(request);
+			return request.getId();
+		});
+		mockMvc.perform(post("/api/group/request/" + requestId + "?accept=true")).andExpect(status().isOk());
+		Group groupResult = groupRepository.findById(GROUP_1_ID).orElse(null);
+		assertNotNull(groupResult);
+		assertTrue(groupResult.getUsers().contains(user));
 	}
 
 	@WithMockUser(username = USER_2_USERNAME)
 	@Test
 	void When_RejectRequest_Ok() throws Exception {
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		User user = userRepository.findByUsername(USER_2_USERNAME);
 		Request request = new Request(group,
 				user);
 		request = requestRepository.save(request);
 
 		mockMvc.perform(post("/api/group/request/" + request.getId() + "?accept=false")).andExpect(status().isOk());
-		group = groupRepository.getReferenceById(GROUP_1_ID);
+		group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		assertFalse(group.getUsers().contains(user));
 		assertFalse(requestRepository.findById(GROUP_1_ID).isPresent());
 	}
@@ -508,7 +565,7 @@ class GroupControllerTest {
 	@WithMockUser(username = USER_1_USERNAME)
 	@Test
 	void When_RespondRequestOtherUser_Forbidden() throws Exception {
-		Group group = groupRepository.getReferenceById(GROUP_1_ID);
+		Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 		User user = userRepository.findByUsername(USER_2_USERNAME);
 		Request request = new Request(group,
 				user);

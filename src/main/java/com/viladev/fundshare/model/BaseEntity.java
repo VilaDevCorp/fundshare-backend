@@ -3,6 +3,7 @@ package com.viladev.fundshare.model;
 import java.util.Calendar;
 import java.util.UUID;
 
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,7 +24,7 @@ public class BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
     Calendar createdAt = Calendar.getInstance();
-    @ManyToOne
+    @ManyToOne (fetch = FetchType.EAGER)
     @JoinColumn(name = "createdBy")
     User createdBy;
 
@@ -36,6 +37,10 @@ public class BaseEntity {
         }
         BaseEntity other = (BaseEntity) obj;
         return this.id.equals(other.id);
+    }
+
+    public int hashCode() {
+        return id.hashCode();
     }
 
 }

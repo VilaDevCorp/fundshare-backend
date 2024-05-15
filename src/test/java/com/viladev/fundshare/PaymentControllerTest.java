@@ -1,7 +1,9 @@
 package com.viladev.fundshare;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viladev.fundshare.forms.GroupForm;
@@ -43,8 +47,6 @@ import java.util.UUID;
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-// @Transactional
 class PaymentControllerTest {
 
     private static final String USER_1_EMAIL = "test@gmail.com";
@@ -89,7 +91,7 @@ class PaymentControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @BeforeAll
+    @BeforeEach
     @WithMockUser(username = USER_1_USERNAME)
     void initialize() throws Exception {
         User user1 = new User(USER_1_EMAIL, USER_1_USERNAME, USER_1_PASSWORD);
@@ -102,12 +104,12 @@ class PaymentControllerTest {
         userRepository.save(user2);
         userRepository.save(user3);
         Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
-        group1.setUsers(List.of(user1, user2, user3));
+        group1.setUsers(Set.of(user1, user2, user3));
         groupRepository.save(group1);
         GROUP_1_ID = group1.getId();
     }
 
-    @AfterAll
+    @AfterEach
     void clean() {
         paymentRepository.deleteAll();
         groupRepository.deleteAll();
@@ -147,8 +149,8 @@ class PaymentControllerTest {
                 .content(obj.writeValueAsString(form1))).andExpect(status().isOk()).andReturn()
                 .getResponse().getContentAsString();
 
-        ApiResponse<Payment> result = null;
-        TypeReference<ApiResponse<Payment>> typeReference = new TypeReference<ApiResponse<Payment>>() {
+        ApiResponse<PaymentDto> result = null;
+        TypeReference<ApiResponse<PaymentDto>> typeReference = new TypeReference<ApiResponse<PaymentDto>>() {
         };
 
         try {
@@ -170,6 +172,14 @@ class PaymentControllerTest {
                                 .getUserPayments().stream()
                                 .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME)
                                         && up.getAmount() == 50.0));
+
+        User user1 = userRepository.findByUsername(USER_1_USERNAME);
+        User user2 = userRepository.findByUsername(USER_2_USERNAME);
+        User user3 = userRepository.findByUsername(USER_3_USERNAME);
+
+        assertEquals(user1.getBalance(), -150.0);
+        assertEquals(user2.getBalance(), 100.0);
+        assertEquals(user3.getBalance(), 50.0);
 
         // Now we test the individual payment
 
@@ -197,6 +207,14 @@ class PaymentControllerTest {
         assertTrue(
                 payment.getUserPayments().stream()
                         .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME) && up.getAmount() == 100.0));
+
+        user1 = userRepository.findByUsername(USER_1_USERNAME);
+        user2 = userRepository.findByUsername(USER_2_USERNAME);
+        user3 = userRepository.findByUsername(USER_3_USERNAME);
+
+        assertEquals(user1.getBalance(), -250.0);
+        assertEquals(user2.getBalance(), 200.0);
+        assertEquals(user3.getBalance(), 50.0);
     }
 
     @WithMockUser(username = USER_1_USERNAME)
@@ -281,6 +299,7 @@ class PaymentControllerTest {
     void When_GetPaymentSuccesful_Ok() throws Exception {
 
         Set<UserPaymentForm> payees = new HashSet<>();
+        payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
         payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
         PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
@@ -307,10 +326,15 @@ class PaymentControllerTest {
 
         assertEquals(foundPayment.getGroup().getId(), GROUP_1_ID);
         assertEquals(foundPayment.getCreatedBy().getUsername(), USER_1_USERNAME);
-        assertEquals(foundPayment.getUserPayments().size(), 1);
+        assertEquals(foundPayment.getUserPayments().size(), 2);
+        assertEquals(foundPayment.getTotalAmount(), 150.0);
         assertTrue(
                 foundPayment.getUserPayments().stream()
-                        .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME) && up.getAmount() == 50.0));
+                        .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME) && up.getAmount() == 50.0)
+                        && foundPayment
+                                .getUserPayments().stream()
+                                .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME)
+                                        && up.getAmount() == 100.0));
 
     }
 
@@ -326,7 +350,7 @@ class PaymentControllerTest {
     @Test
     void When_DeletePaymentSuccessful_Ok() throws Exception {
         Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
+        payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
         PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
 
@@ -336,6 +360,12 @@ class PaymentControllerTest {
                 .andExpect(status().isOk());
 
         assertTrue(paymentRepository.findById(payment.getId()).isEmpty());
+
+        User user1 = userRepository.findByUsername(USER_1_USERNAME);
+        User user2 = userRepository.findByUsername(USER_2_USERNAME);
+
+        assertEquals(user1.getBalance(), 0.0);
+        assertEquals(user2.getBalance(), 0.0);
     }
 
     @WithMockUser(username = USER_1_USERNAME)
@@ -361,4 +391,5 @@ class PaymentControllerTest {
         mockMvc.perform(delete("/api/payment/" + payment.getId()))
                 .andExpect(status().isForbidden());
     }
+
 }

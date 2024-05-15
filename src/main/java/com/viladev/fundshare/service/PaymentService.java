@@ -60,6 +60,7 @@ public class PaymentService {
         Payment payment = new Payment(creator, group);
         payment = paymentRepository.save(payment);
 
+        Double totalAmount = 0.0;
         for (UserPaymentForm userPaymentForm : paymentForm.getPayees()) {
             User user = userRepository.findByUsername(userPaymentForm.getUsername());
             if (user == null) {
@@ -70,7 +71,14 @@ public class PaymentService {
             }
             UserPayment userPayment = new UserPayment(user, payment, userPaymentForm.getAmount());
             userPaymentRepository.save(userPayment);
+            user.setBalance(user.getBalance() + userPaymentForm.getAmount());
+            userRepository.save(user);
+            totalAmount += userPaymentForm.getAmount();
         }
+
+        User creatorUser = userRepository.findByUsername(creator.getUsername());
+        creatorUser.setBalance(creatorUser.getBalance() - totalAmount);
+        userRepository.save(creatorUser);
         payment = paymentRepository.getReferenceById(payment.getId());
         return payment;
     }
@@ -84,6 +92,20 @@ public class PaymentService {
             NotAllowedResourceException {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
         FilterUtils.checkIfCreator(payment);
+        Double totalAmount = 0.0;
+        for (UserPayment userPayment : payment.getUserPayments()) {
+            User user = userRepository.findByUsername(userPayment.getUser().getUsername());
+            if (user == null) {
+                continue;
+            }
+            user.setBalance(user.getBalance() - userPayment.getAmount());
+            userRepository.save(user);
+            totalAmount += userPayment.getAmount();
+        }
+        User creatorUser = userRepository.findByUsername(payment.getCreatedBy().getUsername());
+        creatorUser.setBalance(creatorUser.getBalance() + totalAmount);
+        userRepository.save(creatorUser);
+
         paymentRepository.delete(payment);
     }
 

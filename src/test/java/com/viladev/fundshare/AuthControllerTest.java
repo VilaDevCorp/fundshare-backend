@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +45,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Transactional
 class AuthControllerTest {
 
 	private static final String ACTIVE_USER_EMAIL = "test@gmail.com";
@@ -73,7 +73,7 @@ class AuthControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@BeforeAll
+	@BeforeEach
 	void initialize() throws Exception {
 
 		User user1 = userService.registerUser(ACTIVE_USER_EMAIL, ACTIVE_USER_USERNAME, ACTIVE_USER_PASSWORD);
@@ -84,7 +84,7 @@ class AuthControllerTest {
 
 	}
 
-	@AfterAll
+	@AfterEach
 	void clean() {
 		userRepository.deleteAll();
 	}

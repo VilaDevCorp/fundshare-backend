@@ -1,7 +1,6 @@
 package com.viladev.fundshare.model;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -9,8 +8,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -43,9 +40,8 @@ public class User extends BaseEntity {
 
     Double balance = 0.0;
 
-    @ManyToMany
-    @JoinTable(name = "users_groups", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "group_id"))
-    private List<Group> groups;
+    @ManyToMany(mappedBy = "users")
+    private Set<Group> groups;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ValidationCode> validationCodes = new HashSet<>();
@@ -65,6 +61,10 @@ public class User extends BaseEntity {
         }
         User user = (User) obj;
         return username.equals(user.username);
+    }
+
+    public int hashCode() {
+        return username.hashCode();
     }
 
 }
