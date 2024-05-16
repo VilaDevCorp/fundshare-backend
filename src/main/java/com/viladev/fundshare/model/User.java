@@ -3,6 +3,8 @@ package com.viladev.fundshare.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.springframework.data.annotation.Version;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
@@ -45,6 +47,9 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ValidationCode> validationCodes = new HashSet<>();
+
+    @Version
+    private Long version;
 
     public User(String email, String username, String password) {
         this.email = email;

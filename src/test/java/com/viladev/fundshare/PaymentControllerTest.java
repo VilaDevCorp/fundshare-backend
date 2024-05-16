@@ -4,6 +4,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,280 +118,284 @@ class PaymentControllerTest {
         userRepository.deleteAll();
     }
 
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreateGroupEmptyMandatory_BadRequest() throws Exception {
-        GroupForm form = new GroupForm(null, "");
+    @Nested
+    @DisplayName("Payment creation")
+    class PaymentCreation {
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentSuccesful_Ok() throws Exception {
 
-        ObjectMapper obj = new ObjectMapper();
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-        mockMvc.perform(post("/api/group")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form))).andExpect(status().isBadRequest());
+            Set<UserPaymentForm> payees2 = new HashSet<>();
+            payees2.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
 
-    }
+            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
 
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreatePaymentSuccesful_Ok() throws Exception {
+            ObjectMapper obj = new ObjectMapper();
 
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
+            String resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isOk()).andReturn()
+                    .getResponse().getContentAsString();
 
-        Set<UserPaymentForm> payees2 = new HashSet<>();
-        payees2.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
+            ApiResponse<PaymentDto> result = null;
+            TypeReference<ApiResponse<PaymentDto>> typeReference = new TypeReference<ApiResponse<PaymentDto>>() {
+            };
 
-        PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
 
-        ObjectMapper obj = new ObjectMapper();
+            UUID paymentId = result.getData().getId();
+            Payment payment = paymentRepository.findById(paymentId).orElse(null);
+            assertNotNull(payment);
+            assertEquals(payment.getGroup().getId(), GROUP_1_ID);
+            assertEquals(payment.getCreatedBy().getUsername(), USER_1_USERNAME);
+            assertEquals(payment.getUserPayments().size(), 2);
+            assertTrue(
+                    payment.getUserPayments().stream()
+                            .anyMatch(
+                                    up -> up.getUser().getUsername().equals(USER_2_USERNAME) && up.getAmount() == 100.0)
+                            && payment
+                                    .getUserPayments().stream()
+                                    .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME)
+                                            && up.getAmount() == 50.0));
 
-        String resultString = mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form1))).andExpect(status().isOk()).andReturn()
-                .getResponse().getContentAsString();
+            User user1 = userRepository.findByUsername(USER_1_USERNAME);
+            User user2 = userRepository.findByUsername(USER_2_USERNAME);
+            User user3 = userRepository.findByUsername(USER_3_USERNAME);
 
-        ApiResponse<PaymentDto> result = null;
-        TypeReference<ApiResponse<PaymentDto>> typeReference = new TypeReference<ApiResponse<PaymentDto>>() {
-        };
+            assertEquals(user1.getBalance(), -150.0);
+            assertEquals(user2.getBalance(), 100.0);
+            assertEquals(user3.getBalance(), 50.0);
 
-        try {
-            result = obj.readValue(resultString, typeReference);
-        } catch (Exception e) {
-            assertTrue(false, "Error parsing response");
+            // Now we test the individual payment
+
+            PaymentForm form2 = new PaymentForm(null, payees2);
+
+            resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form2))).andExpect(status().isOk()).andReturn()
+                    .getResponse().getContentAsString();
+
+            result = null;
+
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+
+            paymentId = result.getData().getId();
+            payment = paymentRepository.findById(paymentId).orElse(null);
+            assertNotNull(payment);
+            assertEquals(payment.getGroup(), null);
+            assertEquals(payment.getCreatedBy().getUsername(), USER_1_USERNAME);
+            assertEquals(payment.getUserPayments().size(), 1);
+            assertTrue(
+                    payment.getUserPayments().stream()
+                            .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME)
+                                    && up.getAmount() == 100.0));
+
+            user1 = userRepository.findByUsername(USER_1_USERNAME);
+            user2 = userRepository.findByUsername(USER_2_USERNAME);
+            user3 = userRepository.findByUsername(USER_3_USERNAME);
+
+            assertEquals(user1.getBalance(), -250.0);
+            assertEquals(user2.getBalance(), 200.0);
+            assertEquals(user3.getBalance(), 50.0);
         }
 
-        UUID paymentId = result.getData().getId();
-        Payment payment = paymentRepository.findById(paymentId).orElse(null);
-        assertNotNull(payment);
-        assertEquals(payment.getGroup().getId(), GROUP_1_ID);
-        assertEquals(payment.getCreatedBy().getUsername(), USER_1_USERNAME);
-        assertEquals(payment.getUserPayments().size(), 2);
-        assertTrue(
-                payment.getUserPayments().stream()
-                        .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME) && up.getAmount() == 100.0)
-                        && payment
-                                .getUserPayments().stream()
-                                .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME)
-                                        && up.getAmount() == 50.0));
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentMandatoryFieldsEmpty_BadRequest() throws Exception {
 
-        User user1 = userRepository.findByUsername(USER_1_USERNAME);
-        User user2 = userRepository.findByUsername(USER_2_USERNAME);
-        User user3 = userRepository.findByUsername(USER_3_USERNAME);
+            Set<UserPaymentForm> payees = new HashSet<>();
 
-        assertEquals(user1.getBalance(), -150.0);
-        assertEquals(user2.getBalance(), 100.0);
-        assertEquals(user3.getBalance(), 50.0);
+            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
 
-        // Now we test the individual payment
+            ObjectMapper obj = new ObjectMapper();
 
-        PaymentForm form2 = new PaymentForm(null, payees2);
-
-        resultString = mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form2))).andExpect(status().isOk()).andReturn()
-                .getResponse().getContentAsString();
-
-        result = null;
-
-        try {
-            result = obj.readValue(resultString, typeReference);
-        } catch (Exception e) {
-            assertTrue(false, "Error parsing response");
+            mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isBadRequest());
         }
 
-        paymentId = result.getData().getId();
-        payment = paymentRepository.findById(paymentId).orElse(null);
-        assertNotNull(payment);
-        assertEquals(payment.getGroup(), null);
-        assertEquals(payment.getCreatedBy().getUsername(), USER_1_USERNAME);
-        assertEquals(payment.getUserPayments().size(), 1);
-        assertTrue(
-                payment.getUserPayments().stream()
-                        .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME) && up.getAmount() == 100.0));
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentNonExistingGroup_NotFound() throws Exception {
 
-        user1 = userRepository.findByUsername(USER_1_USERNAME);
-        user2 = userRepository.findByUsername(USER_2_USERNAME);
-        user3 = userRepository.findByUsername(USER_3_USERNAME);
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-        assertEquals(user1.getBalance(), -250.0);
-        assertEquals(user2.getBalance(), 200.0);
-        assertEquals(user3.getBalance(), 50.0);
-    }
+            PaymentForm form1 = new PaymentForm(NONEXISTING_ID, payees);
 
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreatePaymentMandatoryFieldsEmpty_BadRequest() throws Exception {
+            ObjectMapper obj = new ObjectMapper();
 
-        Set<UserPaymentForm> payees = new HashSet<>();
-
-        PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form1))).andExpect(status().isBadRequest());
-    }
-
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreatePaymentNonExistingGroup_NotFound() throws Exception {
-
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
-
-        PaymentForm form1 = new PaymentForm(NONEXISTING_ID, payees);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form1))).andExpect(status().isNotFound());
-    }
-
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreatePaymentNonExistingPayee_NotFound() throws Exception {
-
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(NONEXISTING_USER, 100.0));
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
-
-        PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form1))).andExpect(status().isNotFound());
-    }
-
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_CreatePaymentInvalidAmount_BadRequest() throws Exception {
-
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_2_USERNAME, 0.0));
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
-
-        PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        String resultString = mockMvc.perform(post("/api/payment")
-                .contentType("application/json")
-                .content(obj.writeValueAsString(form1))).andExpect(status().isBadRequest()).andReturn().getResponse()
-                .getContentAsString();
-
-        ApiResponse<Void> result = null;
-        TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
-        };
-        try {
-            result = obj.readValue(resultString, typeReference);
-        } catch (Exception e) {
-            assertTrue(false, "Error parsing response");
-        }
-        assertEquals(CodeErrors.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
-    }
-
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_GetPaymentSuccesful_Ok() throws Exception {
-
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
-
-        PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
-
-        Payment payment = paymentService.createPayment(form);
-
-        ObjectMapper obj = new ObjectMapper();
-
-        ApiResponse<PaymentDto> result = null;
-        TypeReference<ApiResponse<PaymentDto>> typeReference = new TypeReference<ApiResponse<PaymentDto>>() {
-        };
-
-        String resultString = mockMvc.perform(get("/api/payment/" + payment.getId()))
-                .andExpect(status().isOk()).andReturn().getResponse()
-                .getContentAsString();
-
-        try {
-            result = obj.readValue(resultString, typeReference);
-        } catch (Exception e) {
-            assertTrue(false, "Error parsing response");
+            mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isNotFound());
         }
 
-        PaymentDto foundPayment = result.getData();
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentNonExistingPayee_NotFound() throws Exception {
 
-        assertEquals(foundPayment.getGroup().getId(), GROUP_1_ID);
-        assertEquals(foundPayment.getCreatedBy().getUsername(), USER_1_USERNAME);
-        assertEquals(foundPayment.getUserPayments().size(), 2);
-        assertEquals(foundPayment.getTotalAmount(), 150.0);
-        assertTrue(
-                foundPayment.getUserPayments().stream()
-                        .anyMatch(up -> up.getUser().getUsername().equals(USER_3_USERNAME) && up.getAmount() == 50.0)
-                        && foundPayment
-                                .getUserPayments().stream()
-                                .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME)
-                                        && up.getAmount() == 100.0));
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(NONEXISTING_USER, 100.0));
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
+            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isNotFound());
+        }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentInvalidAmount_BadRequest() throws Exception {
+
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 0.0));
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
+
+            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            String resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isBadRequest()).andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            ApiResponse<Void> result = null;
+            TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+            };
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+            assertEquals(CodeErrors.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
+        }
     }
 
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_GetNonExistingPayment_NotFound() throws Exception {
+    @Nested
+    @DisplayName("Payment search")
+    class PaymentSearch {
 
-        mockMvc.perform(get("/api/payment/" + NONEXISTING_ID))
-                .andExpect(status().isNotFound());
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_GetPaymentSuccesful_Ok() throws Exception {
+
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
+
+            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+
+            Payment payment = paymentService.createPayment(form);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            ApiResponse<PaymentDto> result = null;
+            TypeReference<ApiResponse<PaymentDto>> typeReference = new TypeReference<ApiResponse<PaymentDto>>() {
+            };
+
+            String resultString = mockMvc.perform(get("/api/payment/" + payment.getId()))
+                    .andExpect(status().isOk()).andReturn().getResponse()
+                    .getContentAsString();
+
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+
+            PaymentDto foundPayment = result.getData();
+
+            assertEquals(foundPayment.getGroup().getId(), GROUP_1_ID);
+            assertEquals(foundPayment.getCreatedBy().getUsername(), USER_1_USERNAME);
+            assertEquals(foundPayment.getUserPayments().size(), 2);
+            assertEquals(foundPayment.getTotalAmount(), 150.0);
+            assertTrue(
+                    foundPayment.getUserPayments().stream()
+                            .anyMatch(
+                                    up -> up.getUser().getUsername().equals(USER_3_USERNAME) && up.getAmount() == 50.0)
+                            && foundPayment
+                                    .getUserPayments().stream()
+                                    .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME)
+                                            && up.getAmount() == 100.0));
+
+        }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_GetNonExistingPayment_NotFound() throws Exception {
+
+            mockMvc.perform(get("/api/payment/" + NONEXISTING_ID))
+                    .andExpect(status().isNotFound());
+        }
     }
 
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_DeletePaymentSuccessful_Ok() throws Exception {
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
+    @Nested
+    @DisplayName("Payment deletion")
+    class PaymentDeletion {
 
-        PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_DeletePaymentSuccessful_Ok() throws Exception {
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
-        Payment payment = paymentService.createPayment(form);
+            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
 
-        mockMvc.perform(delete("/api/payment/" + payment.getId()))
-                .andExpect(status().isOk());
+            Payment payment = paymentService.createPayment(form);
 
-        assertTrue(paymentRepository.findById(payment.getId()).isEmpty());
+            mockMvc.perform(delete("/api/payment/" + payment.getId()))
+                    .andExpect(status().isOk());
 
-        User user1 = userRepository.findByUsername(USER_1_USERNAME);
-        User user2 = userRepository.findByUsername(USER_2_USERNAME);
+            assertTrue(paymentRepository.findById(payment.getId()).isEmpty());
 
-        assertEquals(user1.getBalance(), 0.0);
-        assertEquals(user2.getBalance(), 0.0);
+            User user1 = userRepository.findByUsername(USER_1_USERNAME);
+            User user2 = userRepository.findByUsername(USER_2_USERNAME);
+
+            assertEquals(user1.getBalance(), 0.0);
+            assertEquals(user2.getBalance(), 0.0);
+        }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_DeleteNonExistingPayment_NotFound() throws Exception {
+            mockMvc.perform(delete("/api/payment/" + NONEXISTING_ID))
+                    .andExpect(status().isNotFound());
+        }
+
+        @WithMockUser(username = USER_2_USERNAME)
+        @Test
+        void When_DeleteOtherUserPayment_Forbidden() throws Exception {
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
+
+            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+
+            Payment payment = paymentService.createPayment(form);
+            User otherUser = userRepository.findByUsername(USER_1_USERNAME);
+            payment.setCreatedBy(otherUser);
+            paymentRepository.save(payment);
+
+            mockMvc.perform(delete("/api/payment/" + payment.getId()))
+                    .andExpect(status().isForbidden());
+        }
     }
-
-    @WithMockUser(username = USER_1_USERNAME)
-    @Test
-    void When_DeleteNonExistingPayment_NotFound() throws Exception {
-        mockMvc.perform(delete("/api/payment/" + NONEXISTING_ID))
-                .andExpect(status().isNotFound());
-    }
-
-    @WithMockUser(username = USER_2_USERNAME)
-    @Test
-    void When_DeleteOtherUserPayment_Forbidden() throws Exception {
-        Set<UserPaymentForm> payees = new HashSet<>();
-        payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
-
-        PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
-
-        Payment payment = paymentService.createPayment(form);
-        User otherUser = userRepository.findByUsername(USER_1_USERNAME);
-        payment.setCreatedBy(otherUser);
-        paymentRepository.save(payment);
-
-        mockMvc.perform(delete("/api/payment/" + payment.getId()))
-                .andExpect(status().isForbidden());
-    }
-
 }
