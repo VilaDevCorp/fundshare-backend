@@ -23,7 +23,7 @@ import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
-import com.viladev.fundshare.utils.FilterUtils;
+import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
 @Transactional
@@ -91,7 +91,7 @@ public class PaymentService {
     public void deletePayment(UUID id) throws InstanceNotFoundException,
             NotAllowedResourceException {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
-        FilterUtils.checkIfCreator(payment);
+        AuthUtils.checkIfCreator(payment);
         Double totalAmount = 0.0;
         for (UserPayment userPayment : payment.getUserPayments()) {
             User user = userRepository.findByUsername(userPayment.getUser().getUsername());

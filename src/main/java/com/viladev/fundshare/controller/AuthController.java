@@ -28,6 +28,7 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.UserDto;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
+import com.viladev.fundshare.utils.AuthUtils;
 import com.viladev.fundshare.utils.CodeErrors;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
@@ -35,7 +36,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-@RequestMapping("/api/public")
+@RequestMapping("/api")
 public class AuthController {
 
     private final UserService userService;
@@ -60,12 +61,12 @@ public class AuthController {
     @Value("${auth.cookie.sameSite}")
     private String cookieSameSite;
 
-    @GetMapping("/health")
+    @GetMapping("/public/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok().body("API IS UP AND RUNNING");
     }
 
-    @PostMapping("/register")
+    @PostMapping("/public/register")
     public ResponseEntity<ApiResponse<UserDto>> registerUser(@RequestBody RegisterForm registerForm)
             throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
         try {
@@ -85,7 +86,7 @@ public class AuthController {
 
     }
 
-    @PostMapping("/login")
+    @PostMapping("/public/login")
     public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginForm loginForm, HttpServletResponse response)
             throws EmptyFormFieldsException {
         AuthResult authResult = null;
@@ -113,7 +114,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>(authResult.getCsrfToken().toString()));
     }
 
-    @PostMapping("/validate/{username}/{validationCode}")
+    @PostMapping("/public/validate/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Boolean>> validateAccount(@PathVariable String username,
             @PathVariable String validationCode) throws InstanceNotFoundException, EmptyFormFieldsException {
         if (username == null || validationCode == null) {
@@ -134,7 +135,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
-    @PostMapping("/validate/{username}/resend")
+    @PostMapping("/public/validate/{username}/resend")
     public ResponseEntity<ApiResponse<Boolean>> resendValidationCode(@PathVariable String username)
             throws EmptyFormFieldsException, InstanceNotFoundException, SendEmailException {
         if (username == null) {
@@ -145,7 +146,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
-    @PostMapping("/forgottenpassword/{username}")
+    @PostMapping("/public/forgottenpassword/{username}")
     public ResponseEntity<ApiResponse<Boolean>> sendResetPasswordCode(@PathVariable String username)
             throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException {
         if (username == null) {
@@ -155,7 +156,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>(null));
     }
 
-    @PostMapping("/resetpassword/{username}/{validationCode}")
+    @PostMapping("/public/resetpassword/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Boolean>> resetPassword(@PathVariable String username,
             @PathVariable String validationCode, @RequestBody String newPassword)
             throws InstanceNotFoundException, EmptyFormFieldsException {

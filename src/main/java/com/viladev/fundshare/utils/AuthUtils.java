@@ -6,7 +6,7 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.model.BaseEntity;
 import com.viladev.fundshare.model.User;
 
-public class FilterUtils {
+public class AuthUtils {
 
     public static void checkIfCreator(BaseEntity entity) throws NotAllowedResourceException {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();

@@ -29,7 +29,7 @@ import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
-import com.viladev.fundshare.utils.FilterUtils;
+import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
 @Transactional
@@ -69,7 +69,7 @@ public class GroupService {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
-        FilterUtils.checkIfCreator(group);
+        AuthUtils.checkIfCreator(group);
 
         if (name != null) {
             group.setName(name);
@@ -87,7 +87,7 @@ public class GroupService {
 
     public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
-        FilterUtils.checkIfCreator(group);
+        AuthUtils.checkIfCreator(group);
 
         Map<UUID, Double> userBalances = new HashMap<>();
 
@@ -145,7 +145,7 @@ public class GroupService {
         if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
             throw new UserAlreadyInvitedException("User already invited to the group");
         }
-        FilterUtils.checkIfCreator(group);
+        AuthUtils.checkIfCreator(group);
         Request request = new Request(group, user);
         request = requestRepository.save(request);
         return request;
@@ -163,8 +163,8 @@ public class GroupService {
         if (user == null) {
             throw new InstanceNotFoundException("User not found");
         }
-        if (!FilterUtils.checkIfLoggedUser(user)) {
-            FilterUtils.checkIfCreator(group);
+        if (!AuthUtils.checkIfLoggedUser(user)) {
+            AuthUtils.checkIfCreator(group);
         }
         if (group.getCreatedBy().equals(user)) {
             throw new KickedCreatorException();
@@ -183,7 +183,7 @@ public class GroupService {
         }
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new InstanceNotFoundException("Request not found"));
-        if (!FilterUtils.checkIfLoggedUser(request.getUser())) {
+        if (!AuthUtils.checkIfLoggedUser(request.getUser())) {
             throw new NotAllowedResourceException("You cannot respond other user's requests");
         }
         if (accept) {

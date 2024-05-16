@@ -28,6 +28,7 @@ import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserRepository;
@@ -189,8 +190,8 @@ class GroupControllerTest {
 					.andReturn()
 					.getResponse().getContentAsString();
 
-			ApiResponse<Group> result = null;
-			TypeReference<ApiResponse<Group>> typeReference = new TypeReference<ApiResponse<Group>>() {
+			ApiResponse<GroupDto> result = null;
+			TypeReference<ApiResponse<GroupDto>> typeReference = new TypeReference<ApiResponse<GroupDto>>() {
 			};
 
 			try {
@@ -199,7 +200,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 
-			Group group = result.getData();
+			GroupDto group = result.getData();
 			assertEquals(GROUP_1_NAME, group.getName());
 			assertEquals(GROUP_1_DESCRIPTION, group.getDescription());
 		}
