@@ -6,6 +6,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -17,12 +19,13 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@NamedEntityGraph(name = "UserPayment.payment", attributeNodes = @NamedAttributeNode("payment"))
 public class UserPayment {
 
     @EmbeddedId
     UserPaymentId id = new UserPaymentId();
 
-    @ManyToOne (optional = false)
+    @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
     @MapsId("userId")
     User user;

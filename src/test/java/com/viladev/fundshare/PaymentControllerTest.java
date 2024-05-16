@@ -94,7 +94,6 @@ class PaymentControllerTest {
     private MockMvc mockMvc;
 
     @BeforeEach
-    @WithMockUser(username = USER_1_USERNAME)
     void initialize() throws Exception {
         User user1 = new User(USER_1_EMAIL, USER_1_USERNAME, USER_1_PASSWORD);
         user1.setValidated(true);

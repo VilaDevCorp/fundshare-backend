@@ -24,6 +24,7 @@ import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
@@ -43,14 +44,18 @@ public class GroupService {
 
     private final PaymentRepository paymentRepository;
 
+    private final UserPaymentRepository userPaymentRepository;
+
     @Autowired
     public GroupService(GroupRepository groupRepository, UserRepository userRepository,
-            RequestRepository requestRepository, PaymentRepository paymentRepository) {
+            RequestRepository requestRepository, PaymentRepository paymentRepository,
+            UserPaymentRepository userPaymentRepository) {
 
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
         this.paymentRepository = paymentRepository;
+        this.userPaymentRepository = userPaymentRepository;
     }
 
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
@@ -85,21 +90,16 @@ public class GroupService {
         return groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
     }
 
-    public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
-        Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
-        AuthUtils.checkIfCreator(group);
-
+    private void resetPayments(Set<Payment> payments) {
         Map<UUID, Double> userBalances = new HashMap<>();
-
-        Set<Payment> payments = paymentRepository.findByGroupId(id);
-
-        // we loop through all the payments of the group
+        // we loop through all the payments
         payments.stream().forEach(payment -> {
             // We use this variable to store the total amount of the payment to add it to
             // the payer's balance
             AtomicReference<Double> totalAmount = new AtomicReference<>(0.0);
 
-            // we loop through all the userPayments of the payment updating the payee's balances
+            // we loop through all the userPayments of the payment updating the payee's
+            // balances
             payment.getUserPayments().stream().forEach(userPayment -> {
                 totalAmount.updateAndGet(value -> value + userPayment.getAmount());
                 if (userBalances.containsKey(userPayment.getUser().getId())) {
@@ -115,6 +115,7 @@ public class GroupService {
             } else {
                 userBalances.put(payment.getCreatedBy().getId(), totalAmount.get());
             }
+            paymentRepository.delete(payment);
         });
 
         userBalances.entrySet().stream().forEach(entry -> {
@@ -122,7 +123,41 @@ public class GroupService {
             user.setBalance(user.getBalance() + entry.getValue());
             userRepository.save(user);
         });
+    }
 
+    private void resetUserPayments(Set<UserPayment> userPayments) {
+        Map<UUID, Double> userBalances = new HashMap<>();
+        userPayments.stream().forEach(userPayment -> {
+            UUID payerId = userPayment.getPayment().getCreatedBy().getId();
+            UUID payeeId = userPayment.getUser().getId();
+            Double amount = userPayment.getAmount();
+
+            if (userBalances.containsKey(payerId)) {
+                userBalances.put(payerId,
+                        userBalances.get(payerId) + amount);
+            } else {
+                userBalances.put(payerId, amount);
+            }
+            if (userBalances.containsKey(payeeId)) {
+                userBalances.put(payeeId,
+                        userBalances.get(payeeId) - amount);
+            } else {
+                userBalances.put(payeeId, -amount);
+            }
+            userPaymentRepository.delete(userPayment);
+        });
+        userBalances.entrySet().stream().forEach(entry -> {
+            User user = userRepository.findById(entry.getKey()).get();
+            user.setBalance(user.getBalance() + entry.getValue());
+            userRepository.save(user);
+        });
+    }
+
+    public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
+        Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        AuthUtils.checkIfCreator(group);
+        Set<Payment> payments = paymentRepository.findByGroupId(id);
+        resetPayments(payments);
         groupRepository.delete(group);
     }
 
@@ -151,6 +186,8 @@ public class GroupService {
         return request;
     }
 
+    // The user can only kick himself (payments are kept) The creator of the group
+    // can kick any user (deleted all the operations where the user is involved)
     public void kickUser(UUID groupId, String username)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException,
             KickedCreatorException, UserKickedIsNotMember {
@@ -163,17 +200,29 @@ public class GroupService {
         if (user == null) {
             throw new InstanceNotFoundException("User not found");
         }
-        if (!AuthUtils.checkIfLoggedUser(user)) {
-            AuthUtils.checkIfCreator(group);
-        }
         if (group.getCreatedBy().equals(user)) {
             throw new KickedCreatorException();
         }
         if (!group.getUsers().contains(user)) {
             throw new UserKickedIsNotMember(null);
         }
-        group.getUsers().remove(user);
-        groupRepository.save(group);
+
+        if (AuthUtils.checkIfLoggedUser(user)) {
+            group.getUsers().remove(user);
+            groupRepository.save(group);
+        } else {
+            AuthUtils.checkIfCreator(group);
+            Set<Payment> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username);
+            resetPayments(payments);
+            Set<UserPayment> userPayments = userPaymentRepository.findByPaymentGroupIdAndUserUsername(groupId,
+                    username);
+            resetUserPayments(userPayments);
+
+            group = groupRepository.findById(groupId).get();
+            group.getUsers().remove(user);
+            groupRepository.save(group);
+        }
+
     }
 
     public void respondRequest(UUID requestId, boolean accept)

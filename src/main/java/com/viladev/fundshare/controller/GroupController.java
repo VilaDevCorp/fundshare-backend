@@ -1,5 +1,6 @@
 package com.viladev.fundshare.controller;
 
+import java.util.Set;
 import java.util.UUID;
 
 import javax.management.InstanceNotFoundException;
@@ -26,6 +27,7 @@ import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.RequestDto;
@@ -99,6 +101,7 @@ public class GroupController {
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
         try {
             groupService.kickUser(groupId, username);
+
             return ResponseEntity.ok().body(new ApiResponse<>());
         } catch (KickedCreatorException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

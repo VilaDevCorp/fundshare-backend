@@ -20,6 +20,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.RequestForm;
@@ -28,8 +30,10 @@ import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
@@ -55,6 +59,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.management.InstanceNotFoundException;
+
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
@@ -71,6 +77,10 @@ class GroupControllerTest {
 	private static final String USER_3_EMAIL = "test3@gmail.com";
 	private static final String USER_3_USERNAME = "test3";
 	private static final String USER_3_PASSWORD = "1234test";
+
+	private static final String USER_4_EMAIL = "test4@gmail.com";
+	private static final String USER_4_USERNAME = "test4";
+	private static final String USER_4_PASSWORD = "1234test";
 
 	private static final String GROUP_1_NAME = "Group 1";
 	private static final String GROUP_1_DESCRIPTION = "This is a group 1 description for testing";
@@ -99,6 +109,9 @@ class GroupControllerTest {
 	private PaymentService paymentService;
 
 	@Autowired
+	private PaymentRepository paymentRepository;
+
+	@Autowired
 	private MockMvc mockMvc;
 	@Autowired
 	private PlatformTransactionManager transactionManager;
@@ -106,19 +119,19 @@ class GroupControllerTest {
 	private TransactionTemplate transactionTemplate;
 
 	@BeforeEach
-	@WithMockUser(username = USER_1_USERNAME)
 	void initialize() throws Exception {
 		transactionTemplate = new TransactionTemplate(transactionManager);
-
 		User user1 = new User(USER_1_EMAIL, USER_1_USERNAME, USER_1_PASSWORD);
 		user1.setValidated(true);
 		User user2 = new User(USER_2_EMAIL, USER_2_USERNAME, USER_2_PASSWORD);
 		user2.setValidated(true);
 		User user3 = new User(USER_3_EMAIL, USER_3_USERNAME, USER_3_PASSWORD);
 		user3.setValidated(true);
+		User user4 = new User(USER_4_EMAIL, USER_4_USERNAME, USER_4_PASSWORD);
 		userRepository.save(user1);
 		userRepository.save(user2);
 		userRepository.save(user3);
+		userRepository.save(user4);
 		Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
 		groupRepository.save(group1);
 		GROUP_1_ID = group1.getId();
@@ -465,32 +478,52 @@ class GroupControllerTest {
 	@DisplayName("Group expulsion")
 	class GroupExpulsion {
 
+		@BeforeEach
+		void initGroupAndPayments()
+				throws InstanceNotFoundException, EmptyFormFieldsException, NotAbove0AmountException {
+			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			Set<User> newUsers = new HashSet<>(group.getUsers());
+			User user2 = userRepository.findByUsername(USER_2_USERNAME);
+			User user3 = userRepository.findByUsername(USER_3_USERNAME);
+			newUsers.add(user2);
+			newUsers.add(user3);
+			group.setUsers(newUsers);
+			groupRepository.save(group);
+			// Payment 1: user1 pays 10 to user2 and 5 to user3
+			PaymentForm paymentForm = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0),
+					new UserPaymentForm(USER_3_USERNAME, 5.0)));
+			paymentService.createPayment(paymentForm);
+			// Payment 2: user2 pays 10 to user1 and 5 to user3
+			PaymentForm paymentForm2 = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0),
+					new UserPaymentForm(USER_3_USERNAME, 5.0)));
+			Payment payment2 = paymentService.createPayment(paymentForm2);
+			payment2.setCreatedBy(user2);
+			paymentRepository.save(payment2);
+		}
+
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_KickFromGroupUser_Ok() throws Exception {
-
-			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			Set<User> newUsers = new HashSet<>(group.getUsers());
-			User user = userRepository.findByUsername(USER_2_USERNAME);
-			newUsers.add(user);
-			group.setUsers(newUsers);
-			groupRepository.save(group);
 			mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isOk());
-			group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			assertFalse(group.getUsers().contains(user));
+			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			User user2 = userRepository.findByUsername(USER_2_USERNAME);
+			assertFalse(group.getUsers().contains(user2));
+			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_1_ID);
+			// We check that the payment created by the user is deleted. The remaining
+			// payment should have only one userPayments because the payed to the user
+			// should be deleted too
+			List<Payment> payments = new ArrayList<>(groupPayments);
+			assertEquals(payments.size(), 1);
+			Set<UserPayment> userPaymentsOfRemainingPayment = payments.get(0).getUserPayments();
+			assertEquals(userPaymentsOfRemainingPayment.size(), 1);
+			assertTrue(userPaymentsOfRemainingPayment.stream()
+					.allMatch(userPayment -> userPayment.getUser().getUsername().equals(USER_3_USERNAME)));
 		}
 
 		@WithMockUser(username = USER_3_USERNAME)
 		@Test
 		void When_KickByNotCreatorUser_Forbidden() throws Exception {
-
-			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			Set<User> newUsers = new HashSet<>(group.getUsers());
-			User user = userRepository.findByUsername(USER_2_USERNAME);
-			newUsers.add(user);
-			group.setUsers(newUsers);
-			groupRepository.save(group);
 			mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isForbidden());
 		}
@@ -498,17 +531,19 @@ class GroupControllerTest {
 		@WithMockUser(username = USER_2_USERNAME)
 		@Test
 		void When_KickYourSelf_Ok() throws Exception {
-
-			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			Set<User> newUsers = new HashSet<>(group.getUsers());
-			User user = userRepository.findByUsername(USER_2_USERNAME);
-			newUsers.add(user);
-			group.setUsers(newUsers);
-			groupRepository.save(group);
 			mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isOk());
-			group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			assertFalse(group.getUsers().contains(user));
+			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			User user2 = userRepository.findByUsername(USER_2_USERNAME);
+			assertFalse(group.getUsers().contains(user2));
+			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_1_ID);
+			// We check that the 2 payments still present and they still have 2 userPayments
+			// each
+			assertEquals(groupPayments.size(), 2);
+			groupPayments.stream().forEach(groupPayment -> {
+				assertEquals(groupPayment.getUserPayments().size(), 2);
+			});
+
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)
@@ -538,7 +573,7 @@ class GroupControllerTest {
 
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
+			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_4_USERNAME))
 					.andExpect(status().isNotFound())
 					.andReturn().getResponse()
 					.getContentAsString();
@@ -558,7 +593,6 @@ class GroupControllerTest {
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_KickFromGroupNonexistentUserAndGroup_NotFound() throws Exception {
-
 			mockMvc.perform(delete("/api/group/" + NONEXISTING_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isNotFound());
 			mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + NONEXISTING_USER))

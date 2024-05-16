@@ -43,8 +43,8 @@ auth:
     secure: false
     httpOnly: false
     sameSite: None
-logging:
-  level:
-    org:
-      hibernate:
-        SQL: DEBUG
+# logging:
+#   level:
+#     org:
+#       hibernate:
+#         SQL: DEBUG
