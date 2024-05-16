@@ -22,4 +22,8 @@ public class AuthUtils {
         return user.getUsername().equals(currentUsername);
     }
 
+    public static String getUsername() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
 }

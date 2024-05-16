@@ -9,15 +9,18 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class UserDto extends BaseEntityDto {
+public class UserWithBalanceDto extends BaseEntityDto {
 
     String email;
 
     String username;
 
-    public UserDto(User user) {
+    Double balance = 0.0;
+
+    public UserWithBalanceDto(User user) {
         this.email = user.getEmail();
         this.username = user.getUsername();
+        this.balance = user.getBalance();
     }
 
     @Override
@@ -28,7 +31,7 @@ public class UserDto extends BaseEntityDto {
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        UserDto user = (UserDto) obj;
+        UserWithBalanceDto user = (UserWithBalanceDto) obj;
         return username.equals(user.username);
     }
 

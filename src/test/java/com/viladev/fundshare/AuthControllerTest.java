@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -26,6 +27,7 @@ import com.viladev.fundshare.forms.LoginForm;
 import com.viladev.fundshare.forms.RegisterForm;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.ValidationCode;
+import com.viladev.fundshare.model.dto.UserWithBalanceDto;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.service.UserService;
@@ -368,7 +370,28 @@ class AuthControllerTest {
 		User user = userRepository.findByUsername(ACTIVE_USER_USERNAME);
 		user.setPassword(new BCryptPasswordEncoder().encode(ACTIVE_USER_PASSWORD));
 		userRepository.save(user);
+	}
 
+	@WithMockUser("test")
+	@Test
+	void When_Self_Ok() throws Exception {
+
+		String resultString = mockMvc.perform(get("/api/self")).andExpect(status().isOk())
+				.andReturn()
+				.getResponse().getContentAsString();
+
+		ObjectMapper obj = new ObjectMapper();
+		ApiResponse<UserWithBalanceDto> result = null;
+		TypeReference<ApiResponse<UserWithBalanceDto>> typeReference = new TypeReference<ApiResponse<UserWithBalanceDto>>() {
+		};
+
+		try {
+			result = obj.readValue(resultString, typeReference);
+		} catch (Exception e) {
+			assertTrue(false, "Error parsing response");
+		}
+		UserWithBalanceDto user = result.getData();
+		assertEquals(ACTIVE_USER_EMAIL, user.getEmail());
 	}
 
 }

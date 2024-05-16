@@ -26,6 +26,8 @@ import com.viladev.fundshare.forms.LoginForm;
 import com.viladev.fundshare.forms.RegisterForm;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.UserDto;
+import com.viladev.fundshare.model.dto.UserWithBalanceDto;
+import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.AuthUtils;
@@ -40,10 +42,12 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AuthController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @Autowired
-    public AuthController(UserService userService) {
+    public AuthController(UserService userService, UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @Value("${auth.cookie.domain}")
@@ -112,6 +116,13 @@ public class AuthController {
         cookie.setAttribute("SameSite", cookieSameSite);
         response.addCookie(cookie);
         return ResponseEntity.ok().body(new ApiResponse<>(authResult.getCsrfToken().toString()));
+    }
+
+    @GetMapping("/self")
+    public ResponseEntity<ApiResponse<UserWithBalanceDto>> self() {
+        String selfUsername = AuthUtils.getUsername();
+        User selfUser = userRepository.findByUsername(selfUsername);
+        return ResponseEntity.ok().body(new ApiResponse<>(new UserWithBalanceDto(selfUser)));
     }
 
     @PostMapping("/public/validate/{username}/{validationCode}")
