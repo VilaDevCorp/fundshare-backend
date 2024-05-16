@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
+import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
+import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
@@ -48,7 +50,9 @@ public class PaymentService {
     }
 
     public Payment createPayment(PaymentForm paymentForm)
-            throws EmptyFormFieldsException, NotAbove0AmountException, InstanceNotFoundException {
+            throws EmptyFormFieldsException, NotAbove0AmountException, InstanceNotFoundException,
+            PayerIsNotInGroupException,
+            PayeeIsNotInGroupException {
         if (paymentForm.getPayees() == null || paymentForm.getPayees().isEmpty()) {
             throw new EmptyFormFieldsException();
         }
@@ -56,6 +60,12 @@ public class PaymentService {
 
         Group group = paymentForm.getGroupId() != null ? groupRepository.findById(paymentForm.getGroupId())
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found")) : null;
+
+        if (group != null) {
+            if (!group.getUsers().contains(creator)) {
+                throw new PayerIsNotInGroupException();
+            }
+        }
 
         Payment payment = new Payment(creator, group);
         payment = paymentRepository.save(payment);
@@ -66,6 +76,12 @@ public class PaymentService {
             if (user == null) {
                 throw new InstanceNotFoundException("User not found");
             }
+            if (group != null) {
+                if (!group.getUsers().contains(user)) {
+                    throw new PayeeIsNotInGroupException();
+                }
+            }
+
             if (userPaymentForm.getAmount() <= 0) {
                 throw new NotAbove0AmountException();
             }

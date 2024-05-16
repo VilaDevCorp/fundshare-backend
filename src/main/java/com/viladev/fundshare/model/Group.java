@@ -48,5 +48,5 @@ public class Group extends BaseEntity {
         this.description = description;
         this.createdBy = createdBy;
     }
-    
+
 }

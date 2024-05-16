@@ -75,6 +75,7 @@ class PaymentControllerTest {
     private static final UUID NONEXISTING_ID = UUID.randomUUID();
 
     private static UUID GROUP_1_ID;
+    private static UUID GROUP_2_ID;
 
     @Autowired
     private UserRepository userRepository;
@@ -108,6 +109,10 @@ class PaymentControllerTest {
         group1.setUsers(Set.of(user1, user2, user3));
         groupRepository.save(group1);
         GROUP_1_ID = group1.getId();
+        Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
+        group2.setUsers(Set.of(user1));
+        groupRepository.save(group2);
+        GROUP_2_ID = group2.getId();
     }
 
     @AfterEach
@@ -286,6 +291,62 @@ class PaymentControllerTest {
                 assertTrue(false, "Error parsing response");
             }
             assertEquals(CodeErrors.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
+        }
+
+        @WithMockUser(username = USER_2_USERNAME)
+        @Test
+        void When_CreatePaymentForGroupAndPayerNotMember_Forbidden() throws Exception {
+
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_1_USERNAME, 10.0));
+
+            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            String resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isForbidden()).andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            ApiResponse<Void> result = null;
+            TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+            };
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+            assertEquals(CodeErrors.PAYER_NOT_IN_GROUP, result.getErrorCode());
+        }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentForGroupAndPayeeNotMember_Forbidden() throws Exception {
+
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 10.0));
+
+            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            String resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isForbidden()).andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            ApiResponse<Void> result = null;
+            TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+            };
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+            assertEquals(CodeErrors.PAYEE_NOT_IN_GROUP, result.getErrorCode());
         }
     }
 

@@ -5,6 +5,8 @@ import java.util.UUID;
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
+import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
+import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.dto.PaymentDto;
@@ -43,6 +47,12 @@ public class PaymentController {
             newPayment = paymentService.createPayment(paymentForm);
         } catch (NotAbove0AmountException e) {
             return ResponseEntity.badRequest().body(new ApiResponse<>(CodeErrors.NOT_ABOVE_0_AMOUNT, e.getMessage()));
+        } catch (PayeeIsNotInGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.PAYEE_NOT_IN_GROUP, e.getMessage()));
+        } catch (PayerIsNotInGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.PAYER_NOT_IN_GROUP, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<PaymentDto>(new PaymentDto(newPayment)));
     }

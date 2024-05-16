@@ -17,5 +17,7 @@ public class CodeErrors {
     public static final String NOT_GROUP_MEMBER = "NOT_GROUP_MEMBER";
     public static final String KICKED_CREATOR = "KICKED_CREATOR";
     public static final String NOT_ABOVE_0_AMOUNT = "NOT_ABOVE_0_AMOUNT";
+    public static final String PAYEE_NOT_IN_GROUP = " PAYEE_NOT_IN_GROUP";
+    public static final String PAYER_NOT_IN_GROUP = "PAYER_NOT_IN_GROUP";
 
 }

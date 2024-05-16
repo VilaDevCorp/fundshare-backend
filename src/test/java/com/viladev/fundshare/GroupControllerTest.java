@@ -22,6 +22,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
+import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
+import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.RequestForm;
@@ -133,6 +135,7 @@ class GroupControllerTest {
 		userRepository.save(user3);
 		userRepository.save(user4);
 		Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
+		group1.setUsers(Set.of(user1));
 		groupRepository.save(group1);
 		GROUP_1_ID = group1.getId();
 	}
@@ -480,7 +483,8 @@ class GroupControllerTest {
 
 		@BeforeEach
 		void initGroupAndPayments()
-				throws InstanceNotFoundException, EmptyFormFieldsException, NotAbove0AmountException {
+				throws InstanceNotFoundException, EmptyFormFieldsException, NotAbove0AmountException,
+				PayerIsNotInGroupException, PayeeIsNotInGroupException {
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 			Set<User> newUsers = new HashSet<>(group.getUsers());
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
