@@ -29,7 +29,7 @@ public class Payment extends BaseEntity {
 
     // we need to fetch the userPayments eagerly as they are a fundamental part of
     // the payment
-    @ManyToOne(optional = true)
+    @ManyToOne(optional = false)
     @JoinColumn(name = "group_id")
     Group group;
 
