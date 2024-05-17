@@ -121,4 +121,27 @@ public class PaymentService {
         paymentRepository.delete(payment);
     }
 
+    @Transactional(readOnly = true)
+    public Double calculateUserGroupBalance(String username, UUID groupId) throws InstanceNotFoundException {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new InstanceNotFoundException();
+        }
+        Group group = groupRepository.findById(groupId).orElseThrow(() -> new InstanceNotFoundException());
+        Set<UserPayment> groupPayments = userPaymentRepository.findOperationsInGroupRelatedToUser(groupId,
+                user.getUsername());
+        Double totalBalance = 0.0;
+        for (UserPayment userPayment : groupPayments) {
+            // If the payment was sent to the user, add the amount to the total balance
+            if (userPayment.getUser().getUsername().equals(username)) {
+                totalBalance += userPayment.getAmount();
+            } else {
+                // If not, the user would be the payer, so subtract the amount from the total
+                // balance
+                totalBalance -= userPayment.getAmount();
+            }
+        }
+        return totalBalance;
+    }
+
 }

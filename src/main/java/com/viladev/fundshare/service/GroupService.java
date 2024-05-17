@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
 import com.viladev.fundshare.exceptions.KickedCreatorException;
+import com.viladev.fundshare.exceptions.NonZeroBalanceException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
@@ -46,16 +47,19 @@ public class GroupService {
 
     private final UserPaymentRepository userPaymentRepository;
 
+    private final PaymentService paymentService;
+
     @Autowired
     public GroupService(GroupRepository groupRepository, UserRepository userRepository,
             RequestRepository requestRepository, PaymentRepository paymentRepository,
-            UserPaymentRepository userPaymentRepository) {
+            UserPaymentRepository userPaymentRepository, PaymentService paymentService) {
 
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
         this.paymentRepository = paymentRepository;
         this.userPaymentRepository = userPaymentRepository;
+        this.paymentService = paymentService;
     }
 
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
@@ -190,7 +194,7 @@ public class GroupService {
     // can kick any user (deleted all the operations where the user is involved)
     public void kickUser(UUID groupId, String username)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException,
-            KickedCreatorException, UserKickedIsNotMember {
+            KickedCreatorException, UserKickedIsNotMember, NonZeroBalanceException {
         if (groupId == null || username == null) {
             throw new EmptyFormFieldsException();
         }
@@ -208,6 +212,10 @@ public class GroupService {
         }
 
         if (AuthUtils.checkIfLoggedUser(user)) {
+            Double userBalanceInGroup = paymentService.calculateUserGroupBalance(username, groupId);
+            if (userBalanceInGroup != 0) {
+                throw new NonZeroBalanceException("You cannot leave the group with a non-zero balance");
+            }
             group.getUsers().remove(user);
             groupRepository.save(group);
         } else {

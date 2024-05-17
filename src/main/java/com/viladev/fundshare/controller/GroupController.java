@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
 import com.viladev.fundshare.exceptions.KickedCreatorException;
+import com.viladev.fundshare.exceptions.NonZeroBalanceException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
@@ -109,6 +110,9 @@ public class GroupController {
         } catch (UserKickedIsNotMember e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(CodeErrors.NOT_GROUP_MEMBER, e.getMessage()));
+        } catch (NonZeroBalanceException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.NON_ZERO_BALANCE, e.getMessage()));
         }
     }
 

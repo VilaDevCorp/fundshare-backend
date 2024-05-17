@@ -23,5 +23,6 @@ public class CodeErrors {
     public static final String NOT_ABOVE_0_AMOUNT = "NOT_ABOVE_0_AMOUNT";
     public static final String PAYEE_NOT_IN_GROUP = " PAYEE_NOT_IN_GROUP";
     public static final String PAYER_NOT_IN_GROUP = "PAYER_NOT_IN_GROUP";
+    public static final String NON_ZERO_BALANCE = "NON_ZERO_BALANCE";
 
 }

@@ -96,6 +96,7 @@ class GroupControllerTest {
 	private static final UUID NONEXISTING_ID = UUID.randomUUID();
 
 	private static UUID GROUP_1_ID;
+	private static UUID GROUP_2_ID;
 
 	@Autowired
 	private UserRepository userRepository;
@@ -138,6 +139,7 @@ class GroupControllerTest {
 		group1.setUsers(Set.of(user1));
 		groupRepository.save(group1);
 		GROUP_1_ID = group1.getId();
+
 	}
 
 	@AfterEach
@@ -487,12 +489,14 @@ class GroupControllerTest {
 				PayerIsNotInGroupException, PayeeIsNotInGroupException {
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 			Set<User> newUsers = new HashSet<>(group.getUsers());
+			User user1 = userRepository.findByUsername(USER_1_USERNAME);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
 			User user3 = userRepository.findByUsername(USER_3_USERNAME);
 			newUsers.add(user2);
 			newUsers.add(user3);
 			group.setUsers(newUsers);
 			groupRepository.save(group);
+
 			// Payment 1: user1 pays 10 to user2 and 5 to user3
 			PaymentForm paymentForm = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0),
 					new UserPaymentForm(USER_3_USERNAME, 5.0)));
@@ -503,6 +507,21 @@ class GroupControllerTest {
 			Payment payment2 = paymentService.createPayment(paymentForm2);
 			payment2.setCreatedBy(user2);
 			paymentRepository.save(payment2);
+
+			Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
+			group2.setUsers(Set.of(user1, user2, user3));
+			groupRepository.save(group2);
+			GROUP_2_ID = group2.getId();
+
+			// Payment 3: user1 pays 10 to user2 
+			PaymentForm paymentForm3 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
+			paymentService.createPayment(paymentForm3);
+			// Payment 4: user2 pays 10 to user1 and 5 to user3
+			PaymentForm paymentForm4 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0)));
+			Payment payment4 = paymentService.createPayment(paymentForm4);
+			payment4.setCreatedBy(user2);
+			paymentRepository.save(payment4);
+
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)
@@ -535,19 +554,42 @@ class GroupControllerTest {
 		@WithMockUser(username = USER_2_USERNAME)
 		@Test
 		void When_KickYourSelf_Ok() throws Exception {
-			mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
+			mockMvc.perform(delete("/api/group/" + GROUP_2_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isOk());
-			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
+			Group group = groupRepository.findById(GROUP_2_ID).orElse(null);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
 			assertFalse(group.getUsers().contains(user2));
-			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_1_ID);
-			// We check that the 2 payments still present and they still have 2 userPayments
+			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_2_ID);
+			// We check that the 2 payments still present and they still have 1 userPayment
 			// each
 			assertEquals(groupPayments.size(), 2);
 			groupPayments.stream().forEach(groupPayment -> {
-				assertEquals(groupPayment.getUserPayments().size(), 2);
+				assertEquals(groupPayment.getUserPayments().size(), 1);
 			});
 
+		}
+
+		@WithMockUser(username = USER_2_USERNAME)
+		@Test
+		void When_KickYourSelfNonZeroBalance_Forbidden() throws Exception {
+			UserPaymentForm uPayment1 = new UserPaymentForm(USER_1_USERNAME, 10.0);
+			PaymentForm payment1 = new PaymentForm(GROUP_1_ID, Set.of(uPayment1));
+			paymentService.createPayment(payment1);
+			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
+					.andExpect(status().isForbidden()).andReturn().getResponse().getContentAsString();
+
+			ApiResponse<Void> result = null;
+			TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+			};
+			ObjectMapper obj = new ObjectMapper();
+
+			try {
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+			String errorCode = result.getErrorCode();
+			assertEquals(CodeErrors.NON_ZERO_BALANCE, errorCode);
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)
