@@ -1,8 +1,8 @@
 package com.viladev.fundshare.service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -12,9 +12,11 @@ import javax.management.InstanceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.InactiveGroupException;
 import com.viladev.fundshare.exceptions.KickedCreatorException;
 import com.viladev.fundshare.exceptions.NonZeroBalanceException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
@@ -73,11 +75,15 @@ public class GroupService {
     }
 
     public Group editGroup(UUID id, String name, String description)
-            throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
+            throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException,
+            InactiveGroupException {
         if (id == null) {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        if (!group.isActive()) {
+            throw new InactiveGroupException();
+        }
         AuthUtils.checkIfCreator(group);
 
         if (name != null) {
@@ -167,12 +173,15 @@ public class GroupService {
 
     public Request createRequest(UUID groupId, String username)
             throws InstanceNotFoundException, NotAllowedResourceException, UserAlreadyPresentException,
-            UserAlreadyInvitedException, EmptyFormFieldsException {
+            UserAlreadyInvitedException, EmptyFormFieldsException, InactiveGroupException {
         if (groupId == null || username == null) {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
+        if (!group.isActive()) {
+            throw new InactiveGroupException();
+        }
 
         User user = userRepository.findByUsername(username);
         if (user == null) {
@@ -194,12 +203,15 @@ public class GroupService {
     // can kick any user (deleted all the operations where the user is involved)
     public void kickUser(UUID groupId, String username)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException,
-            KickedCreatorException, UserKickedIsNotMember, NonZeroBalanceException {
+            KickedCreatorException, UserKickedIsNotMember, NonZeroBalanceException, InactiveGroupException {
         if (groupId == null || username == null) {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
+        if (!group.isActive()) {
+            throw new InactiveGroupException();
+        }
         User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new InstanceNotFoundException("User not found");
@@ -234,7 +246,8 @@ public class GroupService {
     }
 
     public void respondRequest(UUID requestId, boolean accept)
-            throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
+            throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException,
+            InactiveGroupException {
         if (requestId == null) {
             throw new EmptyFormFieldsException();
         }
@@ -244,12 +257,30 @@ public class GroupService {
             throw new NotAllowedResourceException("You cannot respond other user's requests");
         }
         if (accept) {
+            if (!request.getGroup().isActive()) {
+                throw new InactiveGroupException();
+            }
             request.getGroup().getUsers().add(request.getUser());
             request.getUser().getGroups().add(request.getGroup());
             groupRepository.save(request.getGroup());
             userRepository.save(request.getUser());
         }
         requestRepository.delete(request);
+    }
+
+    public void closeGroup(UUID groupId) throws InstanceNotFoundException, NotAllowedResourceException {
+        Optional<Group> group = groupRepository.findById(groupId);
+        if (!group.isPresent()) {
+            throw new InstanceNotFoundException("Group not found");
+        }
+        AuthUtils.checkIfCreator(group.get());
+        group.get().setActive(false);
+        Set<Request> requests = group.get().getRequests();
+        requests.stream().forEach(request -> {
+            requestRepository.delete(request);
+        });
+        groupRepository.save(group.get());
+
     }
 
 }

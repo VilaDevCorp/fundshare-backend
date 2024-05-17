@@ -29,6 +29,7 @@ import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
+import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.CodeErrors;
@@ -86,7 +87,7 @@ class PaymentControllerTest {
     private PaymentRepository paymentRepository;
 
     @Autowired
-    private UserPaymentRepository userPaymentRepository;
+    private GroupService groupService;
 
     @Autowired
     private PaymentService paymentService;
@@ -312,6 +313,37 @@ class PaymentControllerTest {
             }
             assertEquals(CodeErrors.PAYEE_NOT_IN_GROUP, result.getErrorCode());
         }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_CreatePaymentForClosedGroup_Forbidden() throws Exception {
+            groupService.closeGroup(GROUP_1_ID);
+
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
+
+            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+
+            ObjectMapper obj = new ObjectMapper();
+
+            String resultString = mockMvc.perform(post("/api/payment")
+                    .contentType("application/json")
+                    .content(obj.writeValueAsString(form1))).andExpect(status().isForbidden()).andReturn()
+                    .getResponse().getContentAsString();
+
+            ApiResponse<Void> result = null;
+            TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+            };
+
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+            String errorCode = result.getErrorCode();
+            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+
+        }
     }
 
     @Nested
@@ -420,6 +452,38 @@ class PaymentControllerTest {
 
             mockMvc.perform(delete("/api/payment/" + payment.getId()))
                     .andExpect(status().isForbidden());
+        }
+
+        @WithMockUser(username = USER_1_USERNAME)
+        @Test
+        void When_DeletePaymentForClosedGroup_Forbidden() throws Exception {
+            Set<UserPaymentForm> payees = new HashSet<>();
+            payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
+
+            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+
+            Payment payment = paymentService.createPayment(form);
+
+            groupService.closeGroup(GROUP_1_ID);
+
+            String resultString = mockMvc.perform(delete("/api/payment/" + payment.getId()))
+                    .andExpect(status().isForbidden()).andReturn()
+                    .getResponse().getContentAsString();
+
+            ObjectMapper obj = new ObjectMapper();
+
+            ApiResponse<Void> result = null;
+            TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+            };
+
+            try {
+                result = obj.readValue(resultString, typeReference);
+            } catch (Exception e) {
+                assertTrue(false, "Error parsing response");
+            }
+            String errorCode = result.getErrorCode();
+            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+
         }
     }
 }

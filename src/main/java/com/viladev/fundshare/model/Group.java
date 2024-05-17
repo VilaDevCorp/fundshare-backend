@@ -3,6 +3,8 @@ package com.viladev.fundshare.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.springframework.data.annotation.Version;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -32,6 +34,9 @@ public class Group extends BaseEntity {
     String description;
 
     boolean active = true;
+
+    @Version
+    private Long version;
 
     @ManyToMany
     @JoinTable(name = "users_groups", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "user_id"))

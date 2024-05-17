@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.InactiveGroupException;
 import com.viladev.fundshare.exceptions.KickedCreatorException;
 import com.viladev.fundshare.exceptions.NonZeroBalanceException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
@@ -60,8 +61,14 @@ public class GroupController {
     public ResponseEntity<ApiResponse<GroupDto>> editGroup(@RequestBody GroupForm groupForm)
             throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
 
-        Group editedGroup = groupService.editGroup(groupForm.getId(), groupForm.getName(),
-                groupForm.getDescription());
+        Group editedGroup;
+        try {
+            editedGroup = groupService.editGroup(groupForm.getId(), groupForm.getName(),
+                    groupForm.getDescription());
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+        }
 
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(editedGroup)));
     }
@@ -93,7 +100,11 @@ public class GroupController {
         } catch (UserAlreadyPresentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(CodeErrors.ALREADY_MEMBER_GROUP, e.getMessage()));
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
+
     }
 
     @DeleteMapping("/group/{groupId}/members/{username}")
@@ -113,6 +124,9 @@ public class GroupController {
         } catch (NonZeroBalanceException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(CodeErrors.NON_ZERO_BALANCE, e.getMessage()));
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
     }
 
@@ -120,8 +134,19 @@ public class GroupController {
     public ResponseEntity<ApiResponse<Void>> respondRequest(@PathVariable("requestId") UUID requestId,
             @RequestParam boolean accept)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
-        groupService.respondRequest(requestId, accept);
+        try {
+            groupService.respondRequest(requestId, accept);
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+        }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 
+    @PostMapping("/group/{groupId}/close")
+    public ResponseEntity<ApiResponse<Void>> closeGroup(@PathVariable("groupId") UUID groupId)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        groupService.closeGroup(groupId);
+        return ResponseEntity.ok().body(new ApiResponse<>());
+    }
 }

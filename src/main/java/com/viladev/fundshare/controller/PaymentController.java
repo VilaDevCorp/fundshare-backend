@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.InactiveGroupException;
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
@@ -53,6 +54,9 @@ public class PaymentController {
         } catch (PayerIsNotInGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(CodeErrors.PAYER_NOT_IN_GROUP, e.getMessage()));
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<PaymentDto>(new PaymentDto(newPayment)));
     }
@@ -68,7 +72,13 @@ public class PaymentController {
     @DeleteMapping("/payment/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePayment(@PathVariable("id") UUID paymentId)
             throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
-        paymentService.deletePayment(paymentId);
+        try {
+            paymentService.deletePayment(paymentId);
+
+        } catch (InactiveGroupException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+        }
         return ResponseEntity.ok().body(new ApiResponse<Void>());
     }
 

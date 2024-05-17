@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.InactiveGroupException;
 import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
 import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
@@ -52,7 +53,7 @@ public class PaymentService {
     public Payment createPayment(PaymentForm paymentForm)
             throws EmptyFormFieldsException, NotAbove0AmountException, InstanceNotFoundException,
             PayerIsNotInGroupException,
-            PayeeIsNotInGroupException {
+            PayeeIsNotInGroupException, InactiveGroupException {
         if (paymentForm.getPayees() == null || paymentForm.getPayees().isEmpty() || paymentForm.getGroupId() == null) {
             throw new EmptyFormFieldsException();
         }
@@ -60,6 +61,10 @@ public class PaymentService {
 
         Group group = groupRepository.findById(paymentForm.getGroupId())
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
+
+        if (!group.isActive()) {
+            throw new InactiveGroupException();
+        }
 
         if (!group.getUsers().contains(creator)) {
             throw new PayerIsNotInGroupException();
@@ -101,10 +106,15 @@ public class PaymentService {
     }
 
     public void deletePayment(UUID id) throws InstanceNotFoundException,
-            NotAllowedResourceException {
+            NotAllowedResourceException, InactiveGroupException {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
         AuthUtils.checkIfCreator(payment);
         Double totalAmount = 0.0;
+        Group group = payment.getGroup();
+        if (!group.isActive()) {
+            throw new InactiveGroupException();
+        }
+
         for (UserPayment userPayment : payment.getUserPayments()) {
             User user = userRepository.findByUsername(userPayment.getUser().getUsername());
             if (user == null) {

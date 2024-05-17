@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viladev.fundshare.exceptions.EmptyFormFieldsException;
+import com.viladev.fundshare.exceptions.InactiveGroupException;
 import com.viladev.fundshare.exceptions.NotAbove0AmountException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
 import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
@@ -268,6 +269,34 @@ class GroupControllerTest {
 
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
+		void When_EditClosedGroup_Forbidden() throws Exception {
+			groupService.closeGroup(GROUP_1_ID);
+
+			GroupForm form = new GroupForm(GROUP_1_ID, UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
+
+			ObjectMapper obj = new ObjectMapper();
+
+			String resultString = mockMvc.perform(patch("/api/group")
+					.contentType("application/json")
+					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden()).andReturn().getResponse()
+					.getContentAsString();
+
+			ApiResponse<Void> result = null;
+			TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+			};
+
+			try {
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+			String errorCode = result.getErrorCode();
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+
+		}
+
+		@WithMockUser(username = USER_1_USERNAME)
+		@Test
 		void When_EditGroupSuccesful_Ok() throws Exception {
 
 			GroupForm form = new GroupForm(GROUP_1_ID, UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
@@ -384,6 +413,34 @@ class GroupControllerTest {
 
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
+		void When_InviteToClosedGroup_Forbidden() throws Exception {
+			groupService.closeGroup(GROUP_1_ID);
+
+			RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
+
+			ObjectMapper obj = new ObjectMapper();
+
+			String resultString = mockMvc.perform(post("/api/group/request")
+					.contentType("application/json")
+					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden()).andReturn().getResponse()
+					.getContentAsString();
+
+			ApiResponse<Void> result = null;
+			TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+			};
+
+			try {
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+			String errorCode = result.getErrorCode();
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+
+		}
+
+		@WithMockUser(username = USER_1_USERNAME)
+		@Test
 		void When_InviteToGroupEmptyMandatoryFields_BadRequest() throws Exception {
 
 			RequestForm form1 = new RequestForm(null, USER_3_USERNAME);
@@ -486,7 +543,7 @@ class GroupControllerTest {
 		@BeforeEach
 		void initGroupAndPayments()
 				throws InstanceNotFoundException, EmptyFormFieldsException, NotAbove0AmountException,
-				PayerIsNotInGroupException, PayeeIsNotInGroupException {
+				PayerIsNotInGroupException, PayeeIsNotInGroupException, InactiveGroupException {
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 			Set<User> newUsers = new HashSet<>(group.getUsers());
 			User user1 = userRepository.findByUsername(USER_1_USERNAME);
@@ -513,7 +570,7 @@ class GroupControllerTest {
 			groupRepository.save(group2);
 			GROUP_2_ID = group2.getId();
 
-			// Payment 3: user1 pays 10 to user2 
+			// Payment 3: user1 pays 10 to user2
 			PaymentForm paymentForm3 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
 			paymentService.createPayment(paymentForm3);
 			// Payment 4: user2 pays 10 to user1 and 5 to user3
@@ -566,6 +623,31 @@ class GroupControllerTest {
 			groupPayments.stream().forEach(groupPayment -> {
 				assertEquals(groupPayment.getUserPayments().size(), 1);
 			});
+
+		}
+
+		@WithMockUser(username = USER_1_USERNAME)
+		@Test
+		void When_KickFromClosedGroup_Forbidden() throws Exception {
+			groupService.closeGroup(GROUP_2_ID);
+
+			ObjectMapper obj = new ObjectMapper();
+
+			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_2_ID + "/members/" + USER_2_USERNAME))
+					.andExpect(status().isForbidden()).andReturn().getResponse()
+					.getContentAsString();
+
+			ApiResponse<Void> result = null;
+			TypeReference<ApiResponse<Void>> typeReference = new TypeReference<ApiResponse<Void>>() {
+			};
+
+			try {
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+			String errorCode = result.getErrorCode();
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
 		}
 
