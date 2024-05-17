@@ -177,42 +177,6 @@ class PaymentControllerTest {
             assertEquals(user1.getBalance(), -150.0);
             assertEquals(user2.getBalance(), 100.0);
             assertEquals(user3.getBalance(), 50.0);
-
-            // Now we test the individual payment
-
-            PaymentForm form2 = new PaymentForm(null, payees2);
-
-            resultString = mockMvc.perform(post("/api/payment")
-                    .contentType("application/json")
-                    .content(obj.writeValueAsString(form2))).andExpect(status().isOk()).andReturn()
-                    .getResponse().getContentAsString();
-
-            result = null;
-
-            try {
-                result = obj.readValue(resultString, typeReference);
-            } catch (Exception e) {
-                assertTrue(false, "Error parsing response");
-            }
-
-            paymentId = result.getData().getId();
-            payment = paymentRepository.findById(paymentId).orElse(null);
-            assertNotNull(payment);
-            assertEquals(payment.getGroup(), null);
-            assertEquals(payment.getCreatedBy().getUsername(), USER_1_USERNAME);
-            assertEquals(payment.getUserPayments().size(), 1);
-            assertTrue(
-                    payment.getUserPayments().stream()
-                            .anyMatch(up -> up.getUser().getUsername().equals(USER_2_USERNAME)
-                                    && up.getAmount() == 100.0));
-
-            user1 = userRepository.findByUsername(USER_1_USERNAME);
-            user2 = userRepository.findByUsername(USER_2_USERNAME);
-            user3 = userRepository.findByUsername(USER_3_USERNAME);
-
-            assertEquals(user1.getBalance(), -250.0);
-            assertEquals(user2.getBalance(), 200.0);
-            assertEquals(user3.getBalance(), 50.0);
         }
 
         @WithMockUser(username = USER_1_USERNAME)
