@@ -52,7 +52,7 @@ jobs:
             cd services/fundshare-backend
             git checkout main
             ${{ secrets.GIT_PULL_COMMAND }}
-            mvn package -B -DskipTests
+            mvn package -B -DskipTests -DProfile="prod"
             docker build -t fundshare-backend .
             docker-compose -f docker-compose-prod.yml up -d
 #git pull https://davilasanvilar:{TOKEN}@github.com/davilasanvilar/fundshare-backend.git
