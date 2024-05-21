@@ -36,12 +36,12 @@ jobs:
   deploy:
     needs: [test]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.branch == 'main'
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: fundshare-0.0.1-SNAPSHOT.jar
       - name: Deploy to Contabo server
-        if: github.event_name == 'push' && github.branch == 'main'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.CONTABO_HOST }}
