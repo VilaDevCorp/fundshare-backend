@@ -32,7 +32,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.CodeErrors;
+import com.viladev.fundshare.utils.ErrorCodes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -255,7 +255,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(CodeErrors.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
+            assertEquals(ErrorCodes.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_2_USERNAME)
@@ -283,7 +283,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(CodeErrors.PAYER_NOT_IN_GROUP, result.getErrorCode());
+            assertEquals(ErrorCodes.PAYER_NOT_IN_GROUP, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_1_USERNAME)
@@ -311,7 +311,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(CodeErrors.PAYEE_NOT_IN_GROUP, result.getErrorCode());
+            assertEquals(ErrorCodes.PAYEE_NOT_IN_GROUP, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_1_USERNAME)
@@ -341,7 +341,7 @@ class PaymentControllerTest {
                 assertTrue(false, "Error parsing response");
             }
             String errorCode = result.getErrorCode();
-            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+            assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
 
         }
     }
@@ -482,7 +482,7 @@ class PaymentControllerTest {
                 assertTrue(false, "Error parsing response");
             }
             String errorCode = result.getErrorCode();
-            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
+            assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
 
         }
     }

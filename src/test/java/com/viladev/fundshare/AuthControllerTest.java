@@ -32,7 +32,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.CodeErrors;
+import com.viladev.fundshare.utils.ErrorCodes;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -146,7 +146,7 @@ class AuthControllerTest {
 
 			// We remove the quotes from the UUID (extra quotes being added)
 			String errorCode = result.getErrorCode();
-			assertEquals(CodeErrors.EMAIL_ALREADY_IN_USE, errorCode);
+			assertEquals(ErrorCodes.EMAIL_ALREADY_IN_USE, errorCode);
 
 		}
 
@@ -172,7 +172,7 @@ class AuthControllerTest {
 
 			// We remove the quotes from the UUID (extra quotes being added)
 			String errorCode = result.getErrorCode();
-			assertEquals(CodeErrors.USERNAME_ALREADY_IN_USE, errorCode);
+			assertEquals(ErrorCodes.USERNAME_ALREADY_IN_USE, errorCode);
 
 		}
 
