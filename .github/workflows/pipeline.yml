@@ -1,57 +1,57 @@
-# name: Main Pipeline
-# on:
-#   push:
-#     branches:
-#       - main
-#       - develop
-#   pull_request:
-#     branches:
-#       - main
-#       - develop
-# jobs:
-#   avoid_conflicts:
-#     runs-on: ubuntu-latest
-#     permissions:
-#       actions: write
-#     steps:
-#       - name: Cancel conflicting runs
-#         uses: styfle/cancel-workflow-action@0.9.1
-#         with:
-#           access_token: ${{ github.token }}
-#   test:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-#         with:
-#           fetch-depth: 0
-#       - name: Launch PostgreSQL
-#         run: docker-compose up -d db db-test
-#       - uses: actions/setup-java@v4
-#         with:
-#           distribution: "oracle"
-#           java-version: "17"
-#           cache: "maven"
-#       - name: Test application
-#         run: mvn -B test
-#   deploy:
-#     needs: [test]
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/download-artifact@v4
-#         with:
-#           path: backtemplate-0.0.1-SNAPSHOT.jar
-#       - name: Deploy to Contabo server
-#         if: github.event_name == 'push' && github.branch == 'main'
-#         uses: appleboy/ssh-action@v1.0.3
-#         with:
-#           host: ${{ secrets.CONTABO_HOST }}
-#           username: ${{ secrets.CONTABO_USERNAME }}
-#           password: ${{ secrets.CONTABO_PASSWORD }}
-#           port: 22
-#           script: |
-#             cd services/backendtemplate
-#             git checkout main
-#             ${{ secrets.GIT_PULL_COMMAND }}
-#             mvn -B package
-#             docker build -t backtemplate .
-#             docker-compose up -d
+name: Main Pipeline
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+jobs:
+  avoid_conflicts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel conflicting runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Launch PostgreSQL
+        run: docker-compose up -d db db-test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "oracle"
+          java-version: "17"
+          cache: "maven"
+      - name: Test application
+        run: mvn -B test
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.branch == 'main'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: fundshare-0.0.1-SNAPSHOT.jar
+      - name: Deploy to Contabo server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USERNAME }}
+          password: ${{ secrets.CONTABO_PASSWORD }}
+          port: 22
+          script: |
+            cd services/fundshare-backend
+            git checkout main
+            ${{ secrets.GIT_PULL_COMMAND }}
+            mvn package -B -DskipTests
+            docker build -t fundshare-backend .
+            docker-compose -f docker-compose-prod.yml up -d

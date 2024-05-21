@@ -36,7 +36,7 @@ import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.CodeErrors;
+import com.viladev.fundshare.utils.ErrorCodes;
 
 @RestController
 @RequestMapping("/api")
@@ -67,7 +67,7 @@ public class GroupController {
                     groupForm.getDescription());
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
         }
 
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(editedGroup)));
@@ -96,13 +96,13 @@ public class GroupController {
             return ResponseEntity.ok().body(new ApiResponse<>(new RequestDto(request)));
         } catch (UserAlreadyInvitedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(CodeErrors.ALREADY_INVITED_USER, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.ALREADY_INVITED_USER, e.getMessage()));
         } catch (UserAlreadyPresentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(CodeErrors.ALREADY_MEMBER_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.ALREADY_MEMBER_GROUP, e.getMessage()));
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
         }
 
     }
@@ -117,16 +117,16 @@ public class GroupController {
             return ResponseEntity.ok().body(new ApiResponse<>());
         } catch (KickedCreatorException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.KICKED_CREATOR, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.KICKED_CREATOR, e.getMessage()));
         } catch (UserKickedIsNotMember e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(CodeErrors.NOT_GROUP_MEMBER, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.NOT_GROUP_MEMBER, e.getMessage()));
         } catch (NonZeroBalanceException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.NON_ZERO_BALANCE, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.NON_ZERO_BALANCE, e.getMessage()));
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
         }
     }
 
@@ -138,7 +138,7 @@ public class GroupController {
             groupService.respondRequest(requestId, accept);
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }

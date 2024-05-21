@@ -38,11 +38,13 @@ auth:
     expiration: 86400000
     issuer: fundshare
   cookie: 
-    domain: localhost
+    domain: 192.168.0.111
     path: /
     secure: false
     httpOnly: false
-    sameSite: None
+    sameSite: Lax
+frontend:
+  url: http://192.168.0.111:5173
 # logging:
 #   level:
 #     org:

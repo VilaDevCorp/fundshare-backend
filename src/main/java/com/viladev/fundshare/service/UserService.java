@@ -26,6 +26,7 @@ import com.viladev.fundshare.exceptions.AlreadyUsedValidationCodeException;
 import com.viladev.fundshare.exceptions.InvalidCredentialsException;
 import com.viladev.fundshare.exceptions.NotValidatedAccountException;
 import com.viladev.fundshare.exceptions.SendEmailException;
+import com.viladev.fundshare.exceptions.UserAlreadyValidatedException;
 import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.ValidationCode;
@@ -65,10 +66,12 @@ public class UserService {
     private String passwordResetSubject;
     @Value("${mail.message.password-reset}")
     private String passwordResetMessage;
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     public User registerUser(String email, String username, String password)
             throws UsernameAlreadyInUseException, EmailAlreadyInUseException, EmptyFormFieldsException,
-            InstanceNotFoundException, SendEmailException {
+            InstanceNotFoundException, SendEmailException, UserAlreadyValidatedException {
         if (userRepository.findByUsername(username) != null) {
             throw new UsernameAlreadyInUseException("An user is already using this username");
         }
@@ -117,10 +120,15 @@ public class UserService {
     }
 
     public ValidationCode createValidationCode(String username, ValidationCodeTypeEnum type)
-            throws InstanceNotFoundException, SendEmailException {
+            throws InstanceNotFoundException, SendEmailException, UserAlreadyValidatedException {
         User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new InstanceNotFoundException();
+        }
+        if (type.equals(ValidationCodeTypeEnum.ACTIVATE_ACCOUNT)) {
+            if (user.isValidated()) {
+                throw new UserAlreadyValidatedException(username + " is already validated");
+            }
         }
         ValidationCode validationCode = new ValidationCode(type);
         validationCode.setCreatedBy(user);
@@ -131,11 +139,11 @@ public class UserService {
             if (type.equals(ValidationCodeTypeEnum.ACTIVATE_ACCOUNT)) {
                 emailService.sendSimpleMessage(user.getEmail(), accountActivationSubject,
                         accountActivationMessage + "\n\n"
-                                + validationCode.getCode() + ".");
+                                + frontendUrl + "/validate/" + username + "/" + validationCode.getCode());
             } else if (type.equals(ValidationCodeTypeEnum.RESET_PASSWORD)) {
                 emailService.sendSimpleMessage(user.getEmail(), passwordResetSubject,
                         passwordResetMessage + "\n\n"
-                                + validationCode.getCode() + ".");
+                                + frontendUrl + "/reset-password/" + username + "/" + validationCode.getCode());
             }
         } catch (Exception e) {
             throw new SendEmailException("Error sending validation email");
