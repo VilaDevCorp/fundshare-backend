@@ -55,3 +55,4 @@ jobs:
             mvn package -B -DskipTests
             docker build -t fundshare-backend .
             docker-compose -f docker-compose-prod.yml up -d
+#git pull https://davilasanvilar:{TOKEN}@github.com/davilasanvilar/fundshare-backend.git
