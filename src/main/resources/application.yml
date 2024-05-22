@@ -25,9 +25,9 @@ spring:
           starttls:
             enable: true
 cors:
-  allowed-origins: http://localhost:5173
-  allowed-methods: GET, POST, PUT, DELETE, OPTIONS, PATCH
-  allowed-headers: Accept, Content-Type, credentials, Content-Length, Accept-Encoding, X-API-CSRF, Authorization
+  allowed-origins: http://192.168.0.111:5173
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+  allowed-headers: Accept,Content-Type,credentials,Content-Length,Accept-Encoding,X-API-CSRF,Authorization
   exposed-headers: Set-Cookie
   allow-credentials: true
 mail:
