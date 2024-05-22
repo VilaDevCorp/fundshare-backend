@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import com.viladev.fundshare.auth.AuthResult;
 import com.viladev.fundshare.exceptions.AlreadyUsedValidationCodeException;
@@ -40,6 +41,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
+// @CrossOrigin(origins = "http://192.168.0.111:5173", allowedHeaders = "*", allowCredentials = "true")
 @RequestMapping("/api")
 public class AuthController {
 
