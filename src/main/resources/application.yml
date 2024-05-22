@@ -24,6 +24,12 @@ spring:
           auth: true
           starttls:
             enable: true
+cors:
+  allowed-origins: http://localhost:5173
+  allowed-methods: GET, POST, PUT, DELETE, OPTIONS, PATCH
+  allowed-headers: Accept, Content-Type, credentials, Content-Length, Accept-Encoding, X-API-CSRF, Authorization
+  exposed-headers: Set-Cookie
+  allow-credentials: true
 mail:
   enabled: true
   subject:
@@ -37,7 +43,7 @@ auth:
     secret: mysecret
     expiration: 86400000
     issuer: fundshare
-  cookie: 
+  cookie:
     domain: 192.168.0.111
     path: /
     secure: false
