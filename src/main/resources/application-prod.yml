@@ -22,6 +22,8 @@ spring:
           auth: true
           starttls:
             enable: true
+cors:
+  allowed-origins: https://fundshare.dviladev.com
 mail:
   enabled: true
   subject:

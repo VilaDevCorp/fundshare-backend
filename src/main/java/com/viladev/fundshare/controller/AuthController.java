@@ -40,7 +40,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-@CrossOrigin(origins = "http://192.168.0.111:5173", allowedHeaders = "*", allowCredentials = "true")
 @RequestMapping("/api")
 public class AuthController {
 
