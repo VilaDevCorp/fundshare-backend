@@ -42,7 +42,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.ErrorCodes;
+import com.viladev.fundshare.utils.CodeErrors;
 
 import jakarta.persistence.EntityManager;
 
@@ -291,7 +291,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
 		}
 
@@ -435,7 +435,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
 		}
 
@@ -487,7 +487,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.ALREADY_MEMBER_GROUP, errorCode);
+			assertEquals(CodeErrors.ALREADY_MEMBER_GROUP, errorCode);
 
 		}
 
@@ -514,7 +514,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.ALREADY_INVITED_USER, errorCode);
+			assertEquals(CodeErrors.ALREADY_INVITED_USER, errorCode);
 
 		}
 
@@ -647,7 +647,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
+			assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
 		}
 
@@ -671,7 +671,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.NON_ZERO_BALANCE, errorCode);
+			assertEquals(CodeErrors.NON_ZERO_BALANCE, errorCode);
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)
@@ -691,7 +691,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.KICKED_CREATOR, errorCode);
+			assertEquals(CodeErrors.KICKED_CREATOR, errorCode);
 
 		}
 
@@ -715,7 +715,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 			String errorCode = result.getErrorCode();
-			assertEquals(ErrorCodes.NOT_GROUP_MEMBER, errorCode);
+			assertEquals(CodeErrors.NOT_GROUP_MEMBER, errorCode);
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)

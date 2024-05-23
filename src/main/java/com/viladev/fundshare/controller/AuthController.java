@@ -34,14 +34,13 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.AuthUtils;
-import com.viladev.fundshare.utils.ErrorCodes;
+import com.viladev.fundshare.utils.CodeErrors;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-// @CrossOrigin(origins = "http://192.168.0.111:5173", allowedHeaders = "*", allowCredentials = "true")
 @RequestMapping("/api")
 public class AuthController {
 
@@ -85,11 +84,11 @@ public class AuthController {
 
         } catch (EmailAlreadyInUseException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.EMAIL_ALREADY_IN_USE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.EMAIL_ALREADY_IN_USE, e.getMessage()));
 
         } catch (UsernameAlreadyInUseException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.USERNAME_ALREADY_IN_USE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.USERNAME_ALREADY_IN_USE, e.getMessage()));
 
         }
 
@@ -107,11 +106,11 @@ public class AuthController {
 
         } catch (InvalidCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(ErrorCodes.INVALID_CREDENTIALS, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.INVALID_CREDENTIALS, e.getMessage()));
 
         } catch (NotValidatedAccountException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.NOT_VALIDATED_ACCOUNT, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.NOT_VALIDATED_ACCOUNT, e.getMessage()));
         }
         Cookie cookie = new Cookie("JWT_TOKEN", authResult.getJwtToken());
         cookie.setDomain(cookieDomain);
@@ -140,13 +139,13 @@ public class AuthController {
             userService.activateAccount(username, validationCode);
         } catch (ExpiredValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.GONE)
-                    .body(new ApiResponse<>(ErrorCodes.EXPIRED_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.EXPIRED_VALIDATION_CODE, e.getMessage()));
         } catch (AlreadyUsedValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.ALREADY_USED_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.ALREADY_USED_VALIDATION_CODE, e.getMessage()));
         } catch (IncorrectValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(ErrorCodes.INCORRECT_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
@@ -162,7 +161,7 @@ public class AuthController {
 
         } catch (UserAlreadyValidatedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.ALREADY_VALIDATED_ACCOUNT, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.ALREADY_VALIDATED_ACCOUNT, e.getMessage()));
         }
 
         return ResponseEntity.ok().body(new ApiResponse<>());
@@ -190,13 +189,13 @@ public class AuthController {
             userService.resetPassword(username, validationCode, newPassword);
         } catch (ExpiredValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.GONE)
-                    .body(new ApiResponse<>(ErrorCodes.EXPIRED_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.EXPIRED_VALIDATION_CODE, e.getMessage()));
         } catch (AlreadyUsedValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.ALREADY_USED_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.ALREADY_USED_VALIDATION_CODE, e.getMessage()));
         } catch (IncorrectValidationCodeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(ErrorCodes.INCORRECT_VALIDATION_CODE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
