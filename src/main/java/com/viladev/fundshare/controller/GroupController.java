@@ -29,7 +29,6 @@ import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
 import com.viladev.fundshare.model.Group;
-import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.RequestDto;
@@ -57,13 +56,14 @@ public class GroupController {
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(newGroup)));
     }
 
-    @PatchMapping("/group")
-    public ResponseEntity<ApiResponse<GroupDto>> editGroup(@RequestBody GroupForm groupForm)
+    @PatchMapping("/group/{id}")
+    public ResponseEntity<ApiResponse<GroupDto>> editGroup(@PathVariable String id, @RequestBody GroupForm groupForm)
             throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
 
         Group editedGroup;
         try {
-            editedGroup = groupService.editGroup(groupForm.getId(), groupForm.getName(),
+            UUID groupId = UUID.fromString(id);
+            editedGroup = groupService.editGroup(groupId, groupForm.getName(),
                     groupForm.getDescription());
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

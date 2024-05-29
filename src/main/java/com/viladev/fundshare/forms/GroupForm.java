@@ -15,12 +15,6 @@ public class GroupForm {
     private String name;
     private String description;
 
-    public GroupForm(UUID id, String name, String description) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-    }
-
     public GroupForm(String name, String description) {
         this.name = name;
         this.description = description;

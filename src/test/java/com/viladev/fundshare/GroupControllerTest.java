@@ -243,27 +243,13 @@ class GroupControllerTest {
 
 			Group group1 = groupService.getGroupById(GROUP_1_ID);
 
-			GroupForm form = new GroupForm(group1.getId(), UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
+			GroupForm form = new GroupForm(UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
 
 			ObjectMapper obj = new ObjectMapper();
 
-			mockMvc.perform(patch("/api/group")
+			mockMvc.perform(patch("/api/group/" + group1.getId())
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden());
-
-		}
-
-		@WithMockUser(username = USER_1_USERNAME)
-		@Test
-		void When_EditGroupEmptyMandatoryField_BadRequest() throws Exception {
-
-			GroupForm form = new GroupForm(null, UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
-
-			ObjectMapper obj = new ObjectMapper();
-
-			mockMvc.perform(patch("/api/group")
-					.contentType("application/json")
-					.content(obj.writeValueAsString(form))).andExpect(status().isBadRequest());
 
 		}
 
@@ -272,11 +258,11 @@ class GroupControllerTest {
 		void When_EditClosedGroup_Forbidden() throws Exception {
 			groupService.closeGroup(GROUP_1_ID);
 
-			GroupForm form = new GroupForm(GROUP_1_ID, UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
+			GroupForm form = new GroupForm(UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
 
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(patch("/api/group")
+			String resultString = mockMvc.perform(patch("/api/group/" + GROUP_1_ID)
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden()).andReturn().getResponse()
 					.getContentAsString();
@@ -299,11 +285,11 @@ class GroupControllerTest {
 		@Test
 		void When_EditGroupSuccesful_Ok() throws Exception {
 
-			GroupForm form = new GroupForm(GROUP_1_ID, UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
+			GroupForm form = new GroupForm(UPDATED_GROUP_NAME, UPDATED_GROUP_DESCRIPTION);
 
 			ObjectMapper obj = new ObjectMapper();
 
-			mockMvc.perform(patch("/api/group")
+			mockMvc.perform(patch("/api/group/" + GROUP_1_ID)
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isOk());
 
