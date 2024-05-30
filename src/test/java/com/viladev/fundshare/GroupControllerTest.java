@@ -28,6 +28,7 @@ import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.RequestForm;
+import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
@@ -35,6 +36,7 @@ import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
+import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
@@ -200,6 +202,14 @@ class GroupControllerTest {
 	@DisplayName("Group search")
 	class GroupSearch {
 
+		@BeforeEach
+		void initGroupSearch() {
+			User user1 = userRepository.findByUsername(USER_1_USERNAME);
+			Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
+			groupRepository.save(group2);
+			GROUP_2_ID = group2.getId();
+		}
+
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_FindGroupSuccesful_Ok() throws Exception {
@@ -229,6 +239,61 @@ class GroupControllerTest {
 		void When_FindGroupNotFound_NotFound() throws Exception {
 
 			mockMvc.perform(get("/api/group/" + UUID.randomUUID())).andExpect(status().isNotFound());
+
+		}
+
+		@WithMockUser(username = USER_1_USERNAME)
+		@Test
+		void When_FindGroupByKeyword_Ok() throws Exception {
+
+			SearchGroupForm form = new SearchGroupForm();
+			form.setKeyword("GROUP 1");
+			form.setPage(0);
+			form.setPageSize(10);
+
+			ObjectMapper obj = new ObjectMapper();
+
+			String resultString = mockMvc.perform(post("/api/group/search")
+					.contentType("application/json")
+					.content(obj.writeValueAsString(form))).andExpect(status().isOk()).andReturn()
+					.getResponse().getContentAsString();
+
+			ApiResponse<PageDto<Group>> result = null;
+			TypeReference<ApiResponse<PageDto<Group>>> typeReference = new TypeReference<ApiResponse<PageDto<Group>>>() {
+			};
+
+			try {
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+
+			List<Group> groupList = result.getData().getData();
+			assertEquals(1, groupList.size());
+			Group group = groupList.get(0);
+			assertEquals(GROUP_1_NAME, group.getName());
+			assertEquals(GROUP_1_DESCRIPTION, group.getDescription());
+
+			form.setKeyword("GROUP 3");
+			form.setPage(0);
+			form.setPageSize(10);
+
+			resultString = mockMvc.perform(post("/api/group/search")
+					.contentType("application/json")
+					.content(obj.writeValueAsString(form))).andExpect(status().isOk()).andReturn()
+					.getResponse().getContentAsString();
+
+			try
+
+			{
+				result = obj.readValue(resultString, typeReference);
+			} catch (Exception e) {
+				assertTrue(false, "Error parsing response");
+			}
+
+			groupList = result.getData().getData();
+
+			assertEquals(0, groupList.size());
 
 		}
 	}

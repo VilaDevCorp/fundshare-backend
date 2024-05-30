@@ -28,9 +28,11 @@ import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
+import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.dto.GroupDto;
+import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.UserService;
@@ -79,6 +81,13 @@ public class GroupController {
         Group group = groupService.getGroupById(id);
 
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(group)));
+    }
+
+    @PostMapping("/group/search")
+    public ResponseEntity<ApiResponse<PageDto<GroupDto>>> searchGroups(@RequestBody SearchGroupForm searchForm) {
+        PageDto<GroupDto> result = groupService.searchGroups(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+
     }
 
     @DeleteMapping("/group/{groupId}")

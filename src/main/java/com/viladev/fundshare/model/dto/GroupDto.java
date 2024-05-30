@@ -14,11 +14,17 @@ public class GroupDto extends BaseEntityDto {
     String name;
     String description;
     boolean active = true;
+    Double balance;
 
     public GroupDto(Group group) {
         super(group);
         this.name = group.getName();
         this.description = group.getDescription();
         this.active = group.isActive();
+    }
+
+    public GroupDto(Group group, Double balance) {
+        this(group);
+        this.balance = balance;
     }
 }

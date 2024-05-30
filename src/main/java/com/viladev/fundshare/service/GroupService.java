@@ -10,6 +10,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -23,11 +26,14 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
+import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
+import com.viladev.fundshare.model.dto.GroupDto;
+import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
@@ -98,6 +104,16 @@ public class GroupService {
     @Transactional(readOnly = true)
     public Group getGroupById(UUID id) throws InstanceNotFoundException {
         return groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+    }
+
+    @Transactional(readOnly = true)
+    public PageDto<GroupDto> searchGroups(SearchGroupForm form) {
+        int page = form.getPageSize() == null ? 0 : form.getPage();
+        int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
+        Pageable pageable = PageRequest.of(page, pageSize);
+        User user = userRepository.findByUsername(AuthUtils.getUsername());
+        Slice<GroupDto> result = groupRepository.advancedSearch(user, form.getKeyword(), pageable);
+        return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
     }
 
     private void resetPayments(Set<Payment> payments) {
