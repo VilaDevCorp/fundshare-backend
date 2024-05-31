@@ -112,7 +112,11 @@ public class GroupService {
         int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
         Pageable pageable = PageRequest.of(page, pageSize);
         User user = userRepository.findByUsername(AuthUtils.getUsername());
-        Slice<GroupDto> result = groupRepository.advancedSearch(user, form.getKeyword(), pageable);
+        String keyword = null;
+        if (form.getKeyword() != null) {
+            keyword = "%" + form.getKeyword().toLowerCase() + "%";
+        }
+        Slice<GroupDto> result = groupRepository.advancedSearch(user, keyword, pageable);
         return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
     }
 

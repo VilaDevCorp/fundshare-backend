@@ -12,11 +12,11 @@ import lombok.Setter;
 public class PageDto<T> {
     int pageNumber;
     boolean hasNext;
-    List<T> data;
+    List<T> content;
 
-    public PageDto(int pageNumber, boolean hasNext, List<T> data) {
+    public PageDto(int pageNumber, boolean hasNext, List<T> content) {
         this.pageNumber = pageNumber;
         this.hasNext = hasNext;
-        this.data = data;
+        this.content = content;
     }
 }

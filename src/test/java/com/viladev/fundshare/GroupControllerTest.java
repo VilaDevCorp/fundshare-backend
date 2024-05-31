@@ -268,7 +268,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 
-			List<Group> groupList = result.getData().getData();
+			List<Group> groupList = result.getData().getContent();
 			assertEquals(1, groupList.size());
 			Group group = groupList.get(0);
 			assertEquals(GROUP_1_NAME, group.getName());
@@ -291,7 +291,7 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 
-			groupList = result.getData().getData();
+			groupList = result.getData().getContent();
 
 			assertEquals(0, groupList.size());
 

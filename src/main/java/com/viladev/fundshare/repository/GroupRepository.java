@@ -18,15 +18,22 @@ import com.viladev.fundshare.model.dto.GroupDto;
 @Repository
 public interface GroupRepository extends JpaRepository<Group, UUID> {
 
-    @EntityGraph(value = "Group.users")
-    Optional<Group> findById(UUID id);
+	@EntityGraph(value = "Group.users")
+	Optional<Group> findById(UUID id);
 
-    @Query("SELECT new com.viladev.fundshare.model.dto.GroupDto(g, "
-            + "(SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.user = :user )"
-            + " - (SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.payment.createdBy = :user ))"
-            + "FROM Group g WHERE "
-            + ":user member of g.users AND " +
-            "(:keyword is null OR ( lower(g.name) like lower(%:keyword%) OR lower(g.description) like lower(%:keyword%) )   )")
-    Slice<GroupDto> advancedSearch(@Param("user") User user, @Param("keyword") String keyword, Pageable pageable);
+	@Query("SELECT new com.viladev.fundshare.model.dto.GroupDto(g, "
+			+ "(SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.user = :user )"
+			+ " - (SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.payment.createdBy = :user ))"
+			+ "FROM Group g WHERE "
+			+ " (:user member of g.users) AND "
+			+ "	("
+			+ "		:keyword is null OR "
+			+ "     ("
+			+ "			lower(g.name) like :keyword OR "
+			+ "			lower(g.description) like :keyword"
+			+ "     )" 
+			+ "	)"
+			+ "ORDER BY g.createdAt DESC")
+	Slice<GroupDto> advancedSearch(@Param("user") User user, @Param("keyword") String keyword, Pageable pageable);
 
 }
