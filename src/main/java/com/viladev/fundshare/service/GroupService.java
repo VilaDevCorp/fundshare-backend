@@ -27,6 +27,7 @@ import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.SearchGroupForm;
+import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
@@ -34,6 +35,7 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
@@ -263,6 +265,18 @@ public class GroupService {
             groupRepository.save(group);
         }
 
+    }
+
+    public PageDto<RequestDto> findRequestsOfUser(SearchRequestForm form)
+            throws InstanceNotFoundException {
+        String username = AuthUtils.getUsername();
+        User user = userRepository.findByUsername(username);
+
+        int page = form.getPageSize() == null ? 0 : form.getPage();
+        int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Slice<RequestDto> result = requestRepository.findByUserIdOrderByCreatedAt(user.getId(), pageable);
+        return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
     }
 
     public void respondRequest(UUID requestId, boolean accept)

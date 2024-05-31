@@ -1,11 +1,13 @@
 package com.viladev.fundshare.controller;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,6 +31,7 @@ import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
 import com.viladev.fundshare.forms.SearchGroupForm;
+import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.dto.GroupDto;
@@ -97,7 +100,7 @@ public class GroupController {
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 
-    @PostMapping("/group/request")
+    @PostMapping("/request")
     public ResponseEntity<ApiResponse<RequestDto>> createRequest(@RequestBody RequestForm requestForm)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
         try {
@@ -139,7 +142,15 @@ public class GroupController {
         }
     }
 
-    @PostMapping("/group/request/{requestId}")
+    @PostMapping("/request/search")
+    public ResponseEntity<ApiResponse<PageDto<RequestDto>>> getUserRequests(@RequestBody SearchRequestForm searchForm)
+            throws InstanceNotFoundException {
+        PageDto<RequestDto> result = groupService.findRequestsOfUser(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+
+    }
+
+    @PostMapping("/request/{requestId}")
     public ResponseEntity<ApiResponse<Void>> respondRequest(@PathVariable("requestId") UUID requestId,
             @RequestParam boolean accept)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
