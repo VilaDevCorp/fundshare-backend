@@ -25,7 +25,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 			+ "(SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.user = :user )"
 			+ " - (SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.payment.createdBy = :user ))"
 			+ "FROM Group g WHERE "
-			+ " (:user member of g.users) AND "
+			+ " (:user IN (select gu.user from GroupUser gu where gu.group = g) ) AND "
 			+ "	("
 			+ "		:keyword is null OR "
 			+ "     ("

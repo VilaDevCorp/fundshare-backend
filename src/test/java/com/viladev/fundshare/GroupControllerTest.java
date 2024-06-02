@@ -31,13 +31,16 @@ import com.viladev.fundshare.forms.RequestForm;
 import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.GroupUser;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserRepository;
@@ -118,6 +121,9 @@ class GroupControllerTest {
 	private PaymentRepository paymentRepository;
 
 	@Autowired
+	private GroupUserRepository groupUserRepository;
+
+	@Autowired
 	private MockMvc mockMvc;
 	@Autowired
 	private PlatformTransactionManager transactionManager;
@@ -139,8 +145,8 @@ class GroupControllerTest {
 		userRepository.save(user3);
 		userRepository.save(user4);
 		Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
-		group1.setUsers(Set.of(user1));
 		groupRepository.save(group1);
+		groupUserRepository.save(new GroupUser(user1, group1));
 		GROUP_1_ID = group1.getId();
 
 	}
@@ -180,8 +186,8 @@ class GroupControllerTest {
 					.content(obj.writeValueAsString(form))).andExpect(status().isOk()).andReturn()
 					.getResponse().getContentAsString();
 
-			ApiResponse<Group> result = null;
-			TypeReference<ApiResponse<Group>> typeReference = new TypeReference<ApiResponse<Group>>() {
+			ApiResponse<GroupDto> result = null;
+			TypeReference<ApiResponse<GroupDto>> typeReference = new TypeReference<ApiResponse<GroupDto>>() {
 			};
 
 			try {
@@ -258,8 +264,8 @@ class GroupControllerTest {
 					.content(obj.writeValueAsString(form))).andExpect(status().isOk()).andReturn()
 					.getResponse().getContentAsString();
 
-			ApiResponse<PageDto<Group>> result = null;
-			TypeReference<ApiResponse<PageDto<Group>>> typeReference = new TypeReference<ApiResponse<PageDto<Group>>>() {
+			ApiResponse<PageDto<GroupDto>> result = null;
+			TypeReference<ApiResponse<PageDto<GroupDto>>> typeReference = new TypeReference<ApiResponse<PageDto<GroupDto>>>() {
 			};
 
 			try {
@@ -268,9 +274,9 @@ class GroupControllerTest {
 				assertTrue(false, "Error parsing response");
 			}
 
-			List<Group> groupList = result.getData().getContent();
+			List<GroupDto> groupList = result.getData().getContent();
 			assertEquals(1, groupList.size());
-			Group group = groupList.get(0);
+			GroupDto group = groupList.get(0);
 			assertEquals(GROUP_1_NAME, group.getName());
 			assertEquals(GROUP_1_DESCRIPTION, group.getDescription());
 
@@ -375,11 +381,8 @@ class GroupControllerTest {
 			// balances are updated
 			transactionTemplate.execute(status -> {
 				Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-				Set<User> newUsers = new HashSet<>(group.getUsers());
-				newUsers.add(userRepository.findByUsername(USER_2_USERNAME));
-				newUsers.add(userRepository.findByUsername(USER_3_USERNAME));
-				group.setUsers(newUsers);
-				groupRepository.save(group);
+				groupUserRepository.save(new GroupUser(userRepository.findByUsername(USER_2_USERNAME), group));
+				groupUserRepository.save(new GroupUser(userRepository.findByUsername(USER_3_USERNAME), group));
 				return null;
 			});
 			UserPaymentForm uPayment1 = new UserPaymentForm(USER_2_USERNAME, 10.0);
@@ -427,37 +430,40 @@ class GroupControllerTest {
 		@Test
 		void When_InviteToGroupSuccesful_Ok() throws Exception {
 
-			RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
+			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
 
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(post("/api/group/request")
+			String resultString = mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isOk()).andReturn().getResponse()
 					.getContentAsString();
-			TypeReference<ApiResponse<Request>> typeReference = new TypeReference<ApiResponse<Request>>() {
+			TypeReference<ApiResponse<Set<RequestDto>>> typeReference = new TypeReference<ApiResponse<Set<RequestDto>>>() {
 			};
-			ApiResponse<Request> result = null;
+			ApiResponse<Set<RequestDto>> result = null;
 
 			try {
 				result = obj.readValue(resultString, typeReference);
 			} catch (Exception e) {
 				assertTrue(false, "Error parsing response");
 			}
-			Request request = result.getData();
-			assertEquals(GROUP_1_ID, request.getGroup().getId());
-			assertEquals(USER_2_USERNAME, request.getUser().getUsername());
+			Set<RequestDto> requests = result.getData();
+			assertEquals(1, requests.size());
+			requests.forEach(request -> {
+				assertEquals(GROUP_1_ID, request.getGroup().getId());
+				assertEquals(USER_2_USERNAME, request.getUser().getUsername());
+			});
 		}
 
 		@WithMockUser(username = USER_2_USERNAME)
 		@Test
 		void When_InviteToGroupNotOwned_Forbidden() throws Exception {
 
-			RequestForm form = new RequestForm(GROUP_1_ID, USER_3_USERNAME);
+			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_3_USERNAME });
 
 			ObjectMapper obj = new ObjectMapper();
 
-			mockMvc.perform(post("/api/group/request")
+			mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden());
 		}
@@ -467,11 +473,11 @@ class GroupControllerTest {
 		void When_InviteToClosedGroup_Forbidden() throws Exception {
 			groupService.closeGroup(GROUP_1_ID);
 
-			RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
+			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
 
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(post("/api/group/request")
+			String resultString = mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isForbidden()).andReturn().getResponse()
 					.getContentAsString();
@@ -494,15 +500,15 @@ class GroupControllerTest {
 		@Test
 		void When_InviteToGroupEmptyMandatoryFields_BadRequest() throws Exception {
 
-			RequestForm form1 = new RequestForm(null, USER_3_USERNAME);
+			RequestForm form1 = new RequestForm(null, new String[] { USER_3_USERNAME });
 			RequestForm form2 = new RequestForm(GROUP_1_ID, null);
 
 			ObjectMapper obj = new ObjectMapper();
 
-			mockMvc.perform(post("/api/group/request")
+			mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form1))).andExpect(status().isBadRequest());
-			mockMvc.perform(post("/api/group/request")
+			mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form2))).andExpect(status().isBadRequest());
 		}
@@ -513,17 +519,14 @@ class GroupControllerTest {
 			// Add user2 to group
 			transactionTemplate.execute(status -> {
 				Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-				Set<User> newUsers = new HashSet<>(group.getUsers());
-				newUsers.add(userRepository.findByUsername(USER_2_USERNAME));
-				group.setUsers(newUsers);
-				groupRepository.save(group);
+				groupUserRepository.save(new GroupUser(userRepository.findByUsername(USER_2_USERNAME), group));
 				return null;
 			});
-			RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
+			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
 
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(post("/api/group/request")
+			String resultString = mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isConflict()).andReturn().getResponse()
 					.getContentAsString();
@@ -545,12 +548,12 @@ class GroupControllerTest {
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_InviteToGroupUserAlreadyInvited_Conflict() throws Exception {
-			RequestForm form = new RequestForm(GROUP_1_ID, USER_2_USERNAME);
+			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
 			requestRepository.save(new Request(groupRepository.findById(GROUP_1_ID).orElse(null),
 					userRepository.findByUsername(USER_2_USERNAME)));
 			ObjectMapper obj = new ObjectMapper();
 
-			String resultString = mockMvc.perform(post("/api/group/request")
+			String resultString = mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form))).andExpect(status().isConflict()).andReturn().getResponse()
 					.getContentAsString();
@@ -573,15 +576,15 @@ class GroupControllerTest {
 		@Test
 		void When_InviteToNonexistentGroupAndNonexistentUser_NotFound() throws Exception {
 
-			RequestForm form1 = new RequestForm(NONEXISTING_ID, USER_3_USERNAME);
-			RequestForm form2 = new RequestForm(GROUP_1_ID, NONEXISTING_USER);
+			RequestForm form1 = new RequestForm(NONEXISTING_ID, new String[] { USER_3_USERNAME });
+			RequestForm form2 = new RequestForm(GROUP_1_ID, new String[] { NONEXISTING_USER });
 
 			ObjectMapper obj = new ObjectMapper();
 
-			mockMvc.perform(post("/api/group/request")
+			mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form1))).andExpect(status().isNotFound());
-			mockMvc.perform(post("/api/group/request")
+			mockMvc.perform(post("/api/request")
 					.contentType("application/json")
 					.content(obj.writeValueAsString(form2))).andExpect(status().isNotFound());
 		}
@@ -596,15 +599,11 @@ class GroupControllerTest {
 				throws InstanceNotFoundException, EmptyFormFieldsException, NotAbove0AmountException,
 				PayerIsNotInGroupException, PayeeIsNotInGroupException, InactiveGroupException {
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			Set<User> newUsers = new HashSet<>(group.getUsers());
 			User user1 = userRepository.findByUsername(USER_1_USERNAME);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
 			User user3 = userRepository.findByUsername(USER_3_USERNAME);
-			newUsers.add(user2);
-			newUsers.add(user3);
-			group.setUsers(newUsers);
-			groupRepository.save(group);
-
+			groupUserRepository.save(new GroupUser(user2, group));
+			groupUserRepository.save(new GroupUser(user3, group));
 			// Payment 1: user1 pays 10 to user2 and 5 to user3
 			PaymentForm paymentForm = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0),
 					new UserPaymentForm(USER_3_USERNAME, 5.0)));
@@ -617,10 +616,11 @@ class GroupControllerTest {
 			paymentRepository.save(payment2);
 
 			Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
-			group2.setUsers(Set.of(user1, user2, user3));
-			groupRepository.save(group2);
+			group2 = groupRepository.save(group2);
 			GROUP_2_ID = group2.getId();
-
+			groupUserRepository.save(new GroupUser(user1, group2));
+			groupUserRepository.save(new GroupUser(user2, group2));
+			groupUserRepository.save(new GroupUser(user3, group2));
 			// Payment 3: user1 pays 10 to user2
 			PaymentForm paymentForm3 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
 			paymentService.createPayment(paymentForm3);
@@ -639,7 +639,7 @@ class GroupControllerTest {
 					.andExpect(status().isOk());
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
-			assertFalse(group.getUsers().contains(user2));
+			assertFalse(groupUserRepository.existsByGroupIdAndUserUsername(group.getId(), user2.getUsername()));
 			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_1_ID);
 			// We check that the payment created by the user is deleted. The remaining
 			// payment should have only one userPayments because the payed to the user
@@ -666,7 +666,7 @@ class GroupControllerTest {
 					.andExpect(status().isOk());
 			Group group = groupRepository.findById(GROUP_2_ID).orElse(null);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
-			assertFalse(group.getUsers().contains(user2));
+			assertFalse(groupUserRepository.existsByGroupIdAndUserUsername(GROUP_2_ID, USER_2_USERNAME));
 			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_2_ID);
 			// We check that the 2 payments still present and they still have 1 userPayment
 			// each
@@ -793,10 +793,10 @@ class GroupControllerTest {
 				requestRepository.save(request);
 				return request.getId();
 			});
-			mockMvc.perform(post("/api/group/request/" + requestId + "?accept=true")).andExpect(status().isOk());
+			mockMvc.perform(post("/api/request/" + requestId + "?accept=true")).andExpect(status().isOk());
 			Group groupResult = groupRepository.findById(GROUP_1_ID).orElse(null);
 			assertNotNull(groupResult);
-			assertTrue(groupResult.getUsers().contains(user));
+			assertTrue(groupUserRepository.existsByGroupIdAndUserUsername(groupResult.getId(), user.getUsername()));
 		}
 
 		@WithMockUser(username = USER_2_USERNAME)
@@ -808,9 +808,9 @@ class GroupControllerTest {
 					user);
 			request = requestRepository.save(request);
 
-			mockMvc.perform(post("/api/group/request/" + request.getId() + "?accept=false")).andExpect(status().isOk());
+			mockMvc.perform(post("/api/request/" + request.getId() + "?accept=false")).andExpect(status().isOk());
 			group = groupRepository.findById(GROUP_1_ID).orElse(null);
-			assertFalse(group.getUsers().contains(user));
+			assertFalse(groupUserRepository.existsByGroupIdAndUserUsername(group.getId(), user.getUsername()));
 			assertFalse(requestRepository.findById(GROUP_1_ID).isPresent());
 		}
 
@@ -823,14 +823,14 @@ class GroupControllerTest {
 					user);
 			request = requestRepository.save(request);
 
-			mockMvc.perform(post("/api/group/request/" + request.getId() + "?accept=false"))
+			mockMvc.perform(post("/api/request/" + request.getId() + "?accept=false"))
 					.andExpect(status().isForbidden());
 		}
 
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_RespondNonExistentRequest_NotFound() throws Exception {
-			mockMvc.perform(post("/api/group/request/" + NONEXISTING_ID + "?accept=false"))
+			mockMvc.perform(post("/api/request/" + NONEXISTING_ID + "?accept=false"))
 					.andExpect(status().isNotFound());
 		}
 	}

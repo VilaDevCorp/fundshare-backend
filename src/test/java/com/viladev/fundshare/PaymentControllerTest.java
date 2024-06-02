@@ -1,33 +1,28 @@
 package com.viladev.fundshare;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.GroupUser;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
-import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.PaymentService;
@@ -43,7 +38,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -93,6 +87,9 @@ class PaymentControllerTest {
     private PaymentService paymentService;
 
     @Autowired
+    private GroupUserRepository groupUserRepository;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -107,13 +104,16 @@ class PaymentControllerTest {
         userRepository.save(user2);
         userRepository.save(user3);
         Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
-        group1.setUsers(Set.of(user1, user2, user3));
         groupRepository.save(group1);
         GROUP_1_ID = group1.getId();
+        groupUserRepository.save(new GroupUser(user1, group1));
+        groupUserRepository.save(new GroupUser(user2, group1));
+        groupUserRepository.save(new GroupUser(user3, group1));
+        
         Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
-        group2.setUsers(Set.of(user1));
         groupRepository.save(group2);
         GROUP_2_ID = group2.getId();
+        groupUserRepository.save(new GroupUser(user1, group2));
     }
 
     @AfterEach

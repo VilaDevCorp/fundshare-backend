@@ -20,6 +20,14 @@ public class UserDto extends BaseEntityDto {
         this.username = user.getUsername();
     }
 
+    public static UserDto[] toUserDtoArray(User[] users) {
+        UserDto[] userDtos = new UserDto[users.length];
+        for (int i = 0; i < users.length; i++) {
+            userDtos[i] = new UserDto(users[i]);
+        }
+        return userDtos;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {

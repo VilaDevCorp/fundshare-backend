@@ -101,11 +101,12 @@ public class GroupController {
     }
 
     @PostMapping("/request")
-    public ResponseEntity<ApiResponse<RequestDto>> createRequest(@RequestBody RequestForm requestForm)
+    public ResponseEntity<ApiResponse<Set<RequestDto>>> createRequest(@RequestBody RequestForm requestForm)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
         try {
-            Request request = groupService.createRequest(requestForm.getGroupId(), requestForm.getUsername());
-            return ResponseEntity.ok().body(new ApiResponse<>(new RequestDto(request)));
+            Set<Request> requests = groupService.createRequests(requestForm.getGroupId(), requestForm.getUsernames());
+            Set<RequestDto> requestDtos = RequestDto.toSetRequestDto(requests);
+            return ResponseEntity.ok().body(new ApiResponse<>(requestDtos));
         } catch (UserAlreadyInvitedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(CodeErrors.ALREADY_INVITED_USER, e.getMessage()));

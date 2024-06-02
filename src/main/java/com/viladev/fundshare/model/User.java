@@ -42,9 +42,6 @@ public class User extends BaseEntity {
 
     Double balance = 0.0;
 
-    @ManyToMany(mappedBy = "users")
-    private Set<Group> groups;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ValidationCode> validationCodes = new HashSet<>();
 

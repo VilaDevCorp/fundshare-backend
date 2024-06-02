@@ -1,6 +1,7 @@
 package com.viladev.fundshare.service;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -29,6 +30,7 @@ import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.GroupUser;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
@@ -37,6 +39,7 @@ import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
@@ -59,10 +62,13 @@ public class GroupService {
 
     private final PaymentService paymentService;
 
+    private final GroupUserRepository groupUserRepository;
+
     @Autowired
     public GroupService(GroupRepository groupRepository, UserRepository userRepository,
             RequestRepository requestRepository, PaymentRepository paymentRepository,
-            UserPaymentRepository userPaymentRepository, PaymentService paymentService) {
+            UserPaymentRepository userPaymentRepository, PaymentService paymentService,
+            GroupUserRepository groupUserRepository) {
 
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
@@ -70,6 +76,7 @@ public class GroupService {
         this.paymentRepository = paymentRepository;
         this.userPaymentRepository = userPaymentRepository;
         this.paymentService = paymentService;
+        this.groupUserRepository = groupUserRepository;
     }
 
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
@@ -78,8 +85,9 @@ public class GroupService {
             throw new EmptyFormFieldsException();
         }
         Group group = new Group(name, description, creator);
-        group.setUsers(Set.of(creator));
-        return groupRepository.save(group);
+        group = groupRepository.save(group);
+        groupUserRepository.save(new GroupUser(creator, group));
+        return group;
     }
 
     public Group editGroup(UUID id, String name, String description)
@@ -193,10 +201,10 @@ public class GroupService {
         groupRepository.delete(group);
     }
 
-    public Request createRequest(UUID groupId, String username)
+    public Set<Request> createRequests(UUID groupId, String[] usernames)
             throws InstanceNotFoundException, NotAllowedResourceException, UserAlreadyPresentException,
             UserAlreadyInvitedException, EmptyFormFieldsException, InactiveGroupException {
-        if (groupId == null || username == null) {
+        if (groupId == null || usernames == null || usernames.length == 0) {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
@@ -205,20 +213,32 @@ public class GroupService {
             throw new InactiveGroupException();
         }
 
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            throw new InstanceNotFoundException("User not found");
+        Set<Request> requests = new HashSet<>();
+
+        for (String username : usernames) {
+            User user = userRepository.findByUsername(username);
+            if (user == null) {
+                throw new InstanceNotFoundException("User not found");
+            }
+            if (groupUserRepository.existsByGroupIdAndUserUsername(groupId, user.getUsername())) {
+                throw new UserAlreadyPresentException("User already present in the group");
+            }
+            if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
+                throw new UserAlreadyInvitedException("User already invited to the group");
+            }
+            AuthUtils.checkIfCreator(group);
+            Request request = new Request(group, user);
+            request = requestRepository.save(request);
+            requests.add(request);
         }
-        if (group.getUsers().contains(user)) {
-            throw new UserAlreadyPresentException("User already present in the group");
-        }
-        if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
-            throw new UserAlreadyInvitedException("User already invited to the group");
-        }
-        AuthUtils.checkIfCreator(group);
-        Request request = new Request(group, user);
-        request = requestRepository.save(request);
-        return request;
+        return requests;
+    }
+
+    private void removeUserFromGroup(Group group, String username) {
+        GroupUser groupUser = groupUserRepository.findByGroupIdAndUserUsername(group.getId(), username);
+        group.getGroupUsers().remove(groupUser);
+        groupRepository.save(group);
+        groupUserRepository.delete(groupUser);
     }
 
     // The user can only kick himself (payments are kept) The creator of the group
@@ -241,7 +261,7 @@ public class GroupService {
         if (group.getCreatedBy().equals(user)) {
             throw new KickedCreatorException();
         }
-        if (!group.getUsers().contains(user)) {
+        if (!groupUserRepository.existsByGroupIdAndUserUsername(groupId, user.getUsername())) {
             throw new UserKickedIsNotMember(null);
         }
 
@@ -250,8 +270,7 @@ public class GroupService {
             if (userBalanceInGroup != 0) {
                 throw new NonZeroBalanceException("You cannot leave the group with a non-zero balance");
             }
-            group.getUsers().remove(user);
-            groupRepository.save(group);
+            removeUserFromGroup(group, username);
         } else {
             AuthUtils.checkIfCreator(group);
             Set<Payment> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username);
@@ -259,10 +278,7 @@ public class GroupService {
             Set<UserPayment> userPayments = userPaymentRepository.findByPaymentGroupIdAndUserUsername(groupId,
                     username);
             resetUserPayments(userPayments);
-
-            group = groupRepository.findById(groupId).get();
-            group.getUsers().remove(user);
-            groupRepository.save(group);
+            removeUserFromGroup(group, username);
         }
 
     }
@@ -294,10 +310,7 @@ public class GroupService {
             if (!request.getGroup().isActive()) {
                 throw new InactiveGroupException();
             }
-            request.getGroup().getUsers().add(request.getUser());
-            request.getUser().getGroups().add(request.getGroup());
-            groupRepository.save(request.getGroup());
-            userRepository.save(request.getUser());
+            groupUserRepository.save(new GroupUser(request.getUser(), request.getGroup()));
         }
         requestRepository.delete(request);
     }

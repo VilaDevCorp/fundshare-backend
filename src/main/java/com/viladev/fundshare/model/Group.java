@@ -7,11 +7,9 @@ import org.springframework.data.annotation.Version;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
@@ -19,8 +17,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@NamedEntityGraph(name = "Group.users", attributeNodes = { @NamedAttributeNode("users"),
-        @NamedAttributeNode("createdBy") })
+@NamedEntityGraph(name = "Group.users", attributeNodes = {
+        @NamedAttributeNode(value = "groupUsers", subgraph = "groupUsers"),
+        @NamedAttributeNode("createdBy") }, subgraphs = @NamedSubgraph(name = "groupUsers", attributeNodes = @NamedAttributeNode("user")))
 @Entity
 @Table(name = "groups")
 @Getter
@@ -38,9 +37,8 @@ public class Group extends BaseEntity {
     @Version
     private Long version;
 
-    @ManyToMany
-    @JoinTable(name = "users_groups", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "user_id"))
-    private Set<User> users;
+    @OneToMany(mappedBy = "group", orphanRemoval = true, cascade = CascadeType.ALL)
+    Set<GroupUser> groupUsers = new HashSet<>();
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Request> requests = new HashSet<>();

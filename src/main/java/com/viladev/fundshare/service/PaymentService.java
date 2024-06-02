@@ -23,6 +23,7 @@ import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
@@ -40,14 +41,17 @@ public class PaymentService {
 
     private final UserPaymentRepository userPaymentRepository;
 
+    private final GroupUserRepository groupUserRepository;
+
     @Autowired
     public PaymentService(GroupRepository groupRepository, UserRepository userRepository,
             PaymentRepository paymentRepository,
-            UserPaymentRepository userPaymentRepository) {
+            UserPaymentRepository userPaymentRepository, GroupUserRepository groupUserRepository) {
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
         this.userPaymentRepository = userPaymentRepository;
+        this.groupUserRepository = groupUserRepository;
     }
 
     public Payment createPayment(PaymentForm paymentForm)
@@ -66,7 +70,7 @@ public class PaymentService {
             throw new InactiveGroupException();
         }
 
-        if (!group.getUsers().contains(creator)) {
+        if (!groupUserRepository.existsByGroupIdAndUserUsername(group.getId(), creator.getUsername())) {
             throw new PayerIsNotInGroupException();
         }
 
@@ -79,7 +83,7 @@ public class PaymentService {
             if (user == null) {
                 throw new InstanceNotFoundException("User not found");
             }
-            if (!group.getUsers().contains(user)) {
+            if (!groupUserRepository.existsByGroupIdAndUserUsername(group.getId(), user.getUsername())) {
                 throw new PayeeIsNotInGroupException();
             }
 
