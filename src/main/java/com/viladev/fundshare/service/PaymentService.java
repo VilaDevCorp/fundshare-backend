@@ -79,7 +79,7 @@ public class PaymentService {
 
         Double totalAmount = 0.0;
         for (UserPaymentForm userPaymentForm : paymentForm.getPayees()) {
-            User user = userRepository.findByUsername(userPaymentForm.getUsername());
+            User user = userRepository.findByUsernameAndValidatedTrue(userPaymentForm.getUsername());
             if (user == null) {
                 throw new InstanceNotFoundException("User not found");
             }

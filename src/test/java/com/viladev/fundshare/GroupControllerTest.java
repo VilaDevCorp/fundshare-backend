@@ -513,64 +513,7 @@ class GroupControllerTest {
 					.content(obj.writeValueAsString(form2))).andExpect(status().isBadRequest());
 		}
 
-		@WithMockUser(username = USER_1_USERNAME)
-		@Test
-		void When_InviteToGroupUserAlreadyPresent_Conflict() throws Exception {
-			// Add user2 to group
-			transactionTemplate.execute(status -> {
-				Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
-				groupUserRepository.save(new GroupUser(userRepository.findByUsername(USER_2_USERNAME), group));
-				return null;
-			});
-			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
-
-			ObjectMapper obj = new ObjectMapper();
-
-			String resultString = mockMvc.perform(post("/api/request")
-					.contentType("application/json")
-					.content(obj.writeValueAsString(form))).andExpect(status().isConflict()).andReturn().getResponse()
-					.getContentAsString();
-
-			ApiResponse<Request> result = null;
-			TypeReference<ApiResponse<Request>> typeReference = new TypeReference<ApiResponse<Request>>() {
-			};
-
-			try {
-				result = obj.readValue(resultString, typeReference);
-			} catch (Exception e) {
-				assertTrue(false, "Error parsing response");
-			}
-			String errorCode = result.getErrorCode();
-			assertEquals(CodeErrors.ALREADY_MEMBER_GROUP, errorCode);
-
-		}
-
-		@WithMockUser(username = USER_1_USERNAME)
-		@Test
-		void When_InviteToGroupUserAlreadyInvited_Conflict() throws Exception {
-			RequestForm form = new RequestForm(GROUP_1_ID, new String[] { USER_2_USERNAME });
-			requestRepository.save(new Request(groupRepository.findById(GROUP_1_ID).orElse(null),
-					userRepository.findByUsername(USER_2_USERNAME)));
-			ObjectMapper obj = new ObjectMapper();
-
-			String resultString = mockMvc.perform(post("/api/request")
-					.contentType("application/json")
-					.content(obj.writeValueAsString(form))).andExpect(status().isConflict()).andReturn().getResponse()
-					.getContentAsString();
-
-			ApiResponse<Request> result = null;
-			TypeReference<ApiResponse<Request>> typeReference = new TypeReference<ApiResponse<Request>>() {
-			};
-
-			try {
-				result = obj.readValue(resultString, typeReference);
-			} catch (Exception e) {
-				assertTrue(false, "Error parsing response");
-			}
-			String errorCode = result.getErrorCode();
-			assertEquals(CodeErrors.ALREADY_INVITED_USER, errorCode);
-
-		}
+		
 
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test

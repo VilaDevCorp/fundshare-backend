@@ -216,15 +216,15 @@ public class GroupService {
         Set<Request> requests = new HashSet<>();
 
         for (String username : usernames) {
-            User user = userRepository.findByUsername(username);
+            User user = userRepository.findByUsernameAndValidatedTrue(username);
             if (user == null) {
                 throw new InstanceNotFoundException("User not found");
             }
             if (groupUserRepository.existsByGroupIdAndUserUsername(groupId, user.getUsername())) {
-                throw new UserAlreadyPresentException("User already present in the group");
+                continue;
             }
             if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
-                throw new UserAlreadyInvitedException("User already invited to the group");
+                continue;
             }
             AuthUtils.checkIfCreator(group);
             Request request = new Request(group, user);
@@ -303,9 +303,9 @@ public class GroupService {
                     groupId, pageable);
             return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
         } else {
-        Slice<RequestDto> result = requestRepository.findByUserIdOrderByCreatedAt(user.getId(), pageable);
-        return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
-}
+            Slice<RequestDto> result = requestRepository.findByUserIdOrderByCreatedAt(user.getId(), pageable);
+            return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+        }
     }
 
     public void respondRequest(UUID requestId, boolean accept)
