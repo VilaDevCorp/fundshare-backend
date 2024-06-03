@@ -199,4 +199,15 @@ public class AuthController {
         }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, "User not found"));
+        }
+        return ResponseEntity.ok().body(new ApiResponse<>(new UserDto(user)));
+    }
+
 }
