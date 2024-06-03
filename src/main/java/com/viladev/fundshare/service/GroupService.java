@@ -343,4 +343,10 @@ public class GroupService {
 
     }
 
+    public void deleteRequest(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
+        Request request = requestRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        AuthUtils.checkIfCreator(request.getGroup());
+        requestRepository.delete(request);
+    }
+
 }

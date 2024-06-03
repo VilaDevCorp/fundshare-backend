@@ -169,4 +169,12 @@ public class GroupController {
         groupService.closeGroup(groupId);
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
+
+    @DeleteMapping("/request/{requestId}")
+    public ResponseEntity<ApiResponse<Void>> deleteRequest(@PathVariable("requestId") UUID requestId)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        groupService.deleteRequest(requestId);
+        return ResponseEntity.ok().body(new ApiResponse<>());
+    }
+
 }
