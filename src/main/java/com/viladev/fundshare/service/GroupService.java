@@ -284,15 +284,28 @@ public class GroupService {
     }
 
     public PageDto<RequestDto> findRequestsOfUser(SearchRequestForm form)
-            throws InstanceNotFoundException {
+            throws InstanceNotFoundException, NotAllowedResourceException {
         String username = AuthUtils.getUsername();
         User user = userRepository.findByUsername(username);
 
         int page = form.getPageSize() == null ? 0 : form.getPage();
         int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
         Pageable pageable = PageRequest.of(page, pageSize);
+
+        if (form.getGroupId() != null) {
+            UUID groupId = UUID.fromString(form.getGroupId());
+            Group group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
+            if (group.getGroupUsers().stream().noneMatch(groupUser -> groupUser.getUser().equals(user))) {
+                throw new NotAllowedResourceException("You are not a member of this group");
+            }
+            Slice<RequestDto> result = requestRepository.findByGroupId(
+                    groupId, pageable);
+            return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+        } else {
         Slice<RequestDto> result = requestRepository.findByUserIdOrderByCreatedAt(user.getId(), pageable);
         return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+}
     }
 
     public void respondRequest(UUID requestId, boolean accept)

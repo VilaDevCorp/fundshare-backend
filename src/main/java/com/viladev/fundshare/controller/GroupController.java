@@ -145,10 +145,9 @@ public class GroupController {
 
     @PostMapping("/request/search")
     public ResponseEntity<ApiResponse<PageDto<RequestDto>>> getUserRequests(@RequestBody SearchRequestForm searchForm)
-            throws InstanceNotFoundException {
+            throws InstanceNotFoundException, NotAllowedResourceException {
         PageDto<RequestDto> result = groupService.findRequestsOfUser(searchForm);
         return ResponseEntity.ok().body(new ApiResponse<>(result));
-
     }
 
     @PostMapping("/request/{requestId}")
