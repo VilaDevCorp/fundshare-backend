@@ -32,11 +32,15 @@ import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
 import com.viladev.fundshare.forms.SearchGroupForm;
 import com.viladev.fundshare.forms.SearchRequestForm;
+import com.viladev.fundshare.forms.SearchUserForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Request;
+import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.RequestDto;
+import com.viladev.fundshare.model.dto.UserDto;
+import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
@@ -48,9 +52,12 @@ public class GroupController {
 
     private final GroupService groupService;
 
+    private final UserRepository userRepository;
+
     @Autowired
-    public GroupController(UserService userService, GroupService groupService) {
+    public GroupController(UserService userService, GroupService groupService, UserRepository userRepository) {
         this.groupService = groupService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/group")
@@ -175,6 +182,23 @@ public class GroupController {
             throws InstanceNotFoundException, NotAllowedResourceException {
         groupService.deleteRequest(requestId);
         return ResponseEntity.ok().body(new ApiResponse<>());
+    }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, "User not found"));
+        }
+        return ResponseEntity.ok().body(new ApiResponse<>(new UserDto(user)));
+    }
+
+    @PostMapping("/user/search")
+    public ResponseEntity<ApiResponse<PageDto<UserDto>>> searchUsers(@RequestBody SearchUserForm searchForm)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        PageDto<UserDto> result = groupService.findRelatedUsers(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
     }
 
 }
