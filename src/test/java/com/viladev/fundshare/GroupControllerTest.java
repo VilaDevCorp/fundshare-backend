@@ -11,6 +11,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,7 +39,9 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.model.dto.RequestDto;
+import com.viladev.fundshare.model.dto.UserPaymentDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
@@ -565,10 +568,12 @@ class GroupControllerTest {
 			groupUserRepository.save(new GroupUser(user2, group2));
 			groupUserRepository.save(new GroupUser(user3, group2));
 			// Payment 3: user1 pays 10 to user2
-			PaymentForm paymentForm3 = new PaymentForm("PAYMENT1TO2",GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
+			PaymentForm paymentForm3 = new PaymentForm("PAYMENT1TO2", GROUP_2_ID,
+					Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
 			paymentService.createPayment(paymentForm3);
 			// Payment 4: user2 pays 10 to user1 and 5 to user3
-			PaymentForm paymentForm4 = new PaymentForm("PAYMENT2TO1And3",GROUP_2_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0)));
+			PaymentForm paymentForm4 = new PaymentForm("PAYMENT2TO1And3", GROUP_2_ID,
+					Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0)));
 			Payment payment4 = paymentService.createPayment(paymentForm4);
 			payment4.setCreatedBy(user2);
 			paymentRepository.save(payment4);
@@ -583,13 +588,14 @@ class GroupControllerTest {
 			Group group = groupRepository.findById(GROUP_1_ID).orElse(null);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
 			assertFalse(groupUserRepository.existsByGroupIdAndUserUsername(group.getId(), user2.getUsername()));
-			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_1_ID);
+			List<PaymentDto> groupPayments = paymentRepository.findByGroupIdAndCreatedByUsername(GROUP_1_ID, null,
+					Pageable.unpaged()).getContent();
 			// We check that the payment created by the user is deleted. The remaining
 			// payment should have only one userPayments because the payed to the user
 			// should be deleted too
-			List<Payment> payments = new ArrayList<>(groupPayments);
+			List<PaymentDto> payments = new ArrayList<>(groupPayments);
 			assertEquals(payments.size(), 1);
-			Set<UserPayment> userPaymentsOfRemainingPayment = payments.get(0).getUserPayments();
+			Set<UserPaymentDto> userPaymentsOfRemainingPayment = payments.get(0).getUserPayments();
 			assertEquals(userPaymentsOfRemainingPayment.size(), 1);
 			assertTrue(userPaymentsOfRemainingPayment.stream()
 					.allMatch(userPayment -> userPayment.getUser().getUsername().equals(USER_3_USERNAME)));
@@ -610,7 +616,8 @@ class GroupControllerTest {
 			Group group = groupRepository.findById(GROUP_2_ID).orElse(null);
 			User user2 = userRepository.findByUsername(USER_2_USERNAME);
 			assertFalse(groupUserRepository.existsByGroupIdAndUserUsername(GROUP_2_ID, USER_2_USERNAME));
-			Set<Payment> groupPayments = paymentRepository.findByGroupId(GROUP_2_ID);
+			List<PaymentDto> groupPayments = paymentRepository.findByGroupIdAndCreatedByUsername(GROUP_2_ID, null,
+					Pageable.unpaged()).getContent();
 			// We check that the 2 payments still present and they still have 1 userPayment
 			// each
 			assertEquals(groupPayments.size(), 2);
@@ -649,7 +656,7 @@ class GroupControllerTest {
 		@Test
 		void When_KickYourSelfNonZeroBalance_Forbidden() throws Exception {
 			UserPaymentForm uPayment1 = new UserPaymentForm(USER_1_USERNAME, 10.0);
-			PaymentForm payment1 = new PaymentForm("PAYMENTFORBIDDEN",GROUP_1_ID, Set.of(uPayment1));
+			PaymentForm payment1 = new PaymentForm("PAYMENTFORBIDDEN", GROUP_1_ID, Set.of(uPayment1));
 			paymentService.createPayment(payment1);
 			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isForbidden()).andReturn().getResponse().getContentAsString();

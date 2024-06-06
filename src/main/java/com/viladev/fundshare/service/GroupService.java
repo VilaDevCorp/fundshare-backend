@@ -2,6 +2,7 @@ package com.viladev.fundshare.service;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -38,6 +39,7 @@ import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.GroupDto;
 import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.model.dto.UserDto;
 import com.viladev.fundshare.repository.GroupRepository;
@@ -120,9 +122,10 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public PageDto<GroupDto> searchGroups(SearchGroupForm form) {
-        int page = form.getPageSize() == null ? 0 : form.getPage();
-        int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
-        Pageable pageable = PageRequest.of(page, pageSize);
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
         User user = userRepository.findByUsername(AuthUtils.getUsername());
         String keyword = null;
         if (form.getKeyword() != null) {
@@ -132,8 +135,8 @@ public class GroupService {
         return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
     }
 
-    private void resetPayments(Set<Payment> payments) {
-        Map<UUID, Double> userBalances = new HashMap<>();
+    private void resetPayments(List<PaymentDto> payments) {
+        Map<String, Double> userBalances = new HashMap<>();
         // we loop through all the payments
         payments.stream().forEach(payment -> {
             // We use this variable to store the total amount of the payment to add it to
@@ -144,24 +147,24 @@ public class GroupService {
             // balances
             payment.getUserPayments().stream().forEach(userPayment -> {
                 totalAmount.updateAndGet(value -> value + userPayment.getAmount());
-                if (userBalances.containsKey(userPayment.getUser().getId())) {
-                    userBalances.put(userPayment.getUser().getId(),
-                            userBalances.get(userPayment.getUser().getId()) - userPayment.getAmount());
+                if (userBalances.containsKey(userPayment.getUser().getUsername())) {
+                    userBalances.put(userPayment.getUser().getUsername(),
+                            userBalances.get(userPayment.getUser().getUsername()) - userPayment.getAmount());
                 } else {
-                    userBalances.put(userPayment.getUser().getId(), -userPayment.getAmount());
+                    userBalances.put(userPayment.getUser().getUsername(), -userPayment.getAmount());
                 }
             });
-            if (userBalances.containsKey(payment.getCreatedBy().getId())) {
-                userBalances.put(payment.getCreatedBy().getId(),
-                        userBalances.get(payment.getCreatedBy().getId()) + totalAmount.get());
+            if (userBalances.containsKey(payment.getCreatedBy().getUsername())) {
+                userBalances.put(payment.getCreatedBy().getUsername(),
+                        userBalances.get(payment.getCreatedBy().getUsername()) + totalAmount.get());
             } else {
-                userBalances.put(payment.getCreatedBy().getId(), totalAmount.get());
+                userBalances.put(payment.getCreatedBy().getUsername(), totalAmount.get());
             }
-            paymentRepository.delete(payment);
+            paymentRepository.deleteById(payment.getId());
         });
 
         userBalances.entrySet().stream().forEach(entry -> {
-            User user = userRepository.findById(entry.getKey()).get();
+            User user = userRepository.findByUsername(entry.getKey());
             user.setBalance(user.getBalance() + entry.getValue());
             userRepository.save(user);
         });
@@ -198,7 +201,9 @@ public class GroupService {
     public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
         AuthUtils.checkIfCreator(group);
-        Set<Payment> payments = paymentRepository.findByGroupId(id);
+        Pageable pageable = Pageable.unpaged();
+        List<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(id, null, pageable)
+                .getContent();
         resetPayments(payments);
         groupRepository.delete(group);
     }
@@ -275,7 +280,8 @@ public class GroupService {
             removeUserFromGroup(group, username);
         } else {
             AuthUtils.checkIfCreator(group);
-            Set<Payment> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username);
+            List<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username,
+                    Pageable.unpaged()).getContent();
             resetPayments(payments);
             Set<UserPayment> userPayments = userPaymentRepository.findByPaymentGroupIdAndUserUsername(groupId,
                     username);
@@ -290,9 +296,10 @@ public class GroupService {
         String username = AuthUtils.getUsername();
         User user = userRepository.findByUsername(username);
 
-        int page = form.getPageSize() == null ? 0 : form.getPage();
-        int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
-        Pageable pageable = PageRequest.of(page, pageSize);
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
         UUID groupId = UUID.fromString(form.getGroupId());
         Slice<UserDto> result = groupUserRepository.findRelatedUsers(
                 user.getUsername(), groupId, pageable);
@@ -304,9 +311,10 @@ public class GroupService {
         String username = AuthUtils.getUsername();
         User user = userRepository.findByUsername(username);
 
-        int page = form.getPageSize() == null ? 0 : form.getPage();
-        int pageSize = form.getPageSize() == null ? 100000 : form.getPageSize();
-        Pageable pageable = PageRequest.of(page, pageSize);
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
 
         if (form.getGroupId() != null) {
             UUID groupId = UUID.fromString(form.getGroupId());

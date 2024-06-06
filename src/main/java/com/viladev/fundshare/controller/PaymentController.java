@@ -22,8 +22,12 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
 import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.PaymentForm;
+import com.viladev.fundshare.forms.SearchPaymentForm;
+import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Payment;
+import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.PaymentDto;
+import com.viladev.fundshare.model.dto.RequestDto;
 import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
 import com.viladev.fundshare.utils.CodeErrors;
@@ -66,6 +70,13 @@ public class PaymentController {
         Payment payment = paymentService.getPaymentById(paymentId);
 
         return ResponseEntity.ok().body(new ApiResponse<PaymentDto>(new PaymentDto(payment)));
+    }
+
+    @PostMapping("/payment/search")
+    public ResponseEntity<ApiResponse<PageDto<PaymentDto>>> searchPayments(@RequestBody SearchPaymentForm searchForm)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        PageDto<PaymentDto> result = paymentService.searchPayments(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
     }
 
     @DeleteMapping("/payment/{id}")

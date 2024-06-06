@@ -6,6 +6,9 @@ import java.util.UUID;
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +20,14 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
 import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.PaymentForm;
+import com.viladev.fundshare.forms.SearchPaymentForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
+import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
@@ -158,6 +164,15 @@ public class PaymentService {
             }
         }
         return totalBalance;
+    }
+
+    @Transactional(readOnly = true)
+    public PageDto<PaymentDto> searchPayments(SearchPaymentForm searchForm) {
+        Pageable pageable = PageRequest.of(searchForm.getPage(), searchForm.getPageSize());
+        UUID groupId = UUID.fromString(searchForm.getGroupId());
+        Slice<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, null,
+                pageable);
+        return new PageDto<>(searchForm.getPage(), payments.hasNext(), payments.getContent());
     }
 
 }
