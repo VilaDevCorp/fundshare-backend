@@ -58,7 +58,9 @@ public class PaymentService {
             throws EmptyFormFieldsException, NotAbove0AmountException, InstanceNotFoundException,
             PayerIsNotInGroupException,
             PayeeIsNotInGroupException, InactiveGroupException {
-        if (paymentForm.getPayees() == null || paymentForm.getPayees().isEmpty() || paymentForm.getGroupId() == null) {
+        if (paymentForm.getDescription() == null || paymentForm.getDescription().isEmpty()
+                || paymentForm.getPayees() == null || paymentForm.getPayees().isEmpty()
+                || paymentForm.getGroupId() == null) {
             throw new EmptyFormFieldsException();
         }
         User creator = userRepository.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
@@ -74,7 +76,7 @@ public class PaymentService {
             throw new PayerIsNotInGroupException();
         }
 
-        Payment payment = new Payment(creator, group);
+        Payment payment = new Payment(paymentForm.getDescription(), creator, group);
         payment = paymentRepository.save(payment);
 
         Double totalAmount = 0.0;

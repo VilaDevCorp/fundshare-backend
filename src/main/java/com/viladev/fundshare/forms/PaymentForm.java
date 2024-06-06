@@ -12,10 +12,12 @@ import lombok.Setter;
 @Setter
 public class PaymentForm {
 
+    private String description;
     private UUID groupId;
     private Set<UserPaymentForm> payees;
 
-    public PaymentForm(UUID groupId, Set<UserPaymentForm> payees) {
+    public PaymentForm(String description, UUID groupId, Set<UserPaymentForm> payees) {
+        this.description = description;
         this.groupId = groupId;
         this.payees = payees;
     }

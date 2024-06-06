@@ -27,6 +27,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Payment extends BaseEntity {
 
+    private String description;
+
     // we need to fetch the userPayments eagerly as they are a fundamental part of
     // the payment
     @ManyToOne(optional = false)
@@ -36,7 +38,8 @@ public class Payment extends BaseEntity {
     @OneToMany(mappedBy = "payment", orphanRemoval = true, cascade = CascadeType.ALL)
     Set<UserPayment> userPayments = new HashSet<>();
 
-    public Payment(User createdBy, Group group) {
+    public Payment(String description, User createdBy, Group group) {
+        this.description = description;
         this.createdBy = createdBy;
         this.group = group;
     }

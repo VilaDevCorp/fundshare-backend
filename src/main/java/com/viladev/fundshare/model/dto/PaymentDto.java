@@ -15,6 +15,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class PaymentDto extends BaseEntityDto {
 
+    String description;
+
     GroupDto group;
 
     Double totalAmount;
@@ -23,6 +25,7 @@ public class PaymentDto extends BaseEntityDto {
 
     public PaymentDto(Payment payment) {
         super(payment);
+        this.description = payment.getDescription();
         this.group = payment.getGroup() != null ? new GroupDto(payment.getGroup()) : null;
         if (payment.getUserPayments() != null && !payment.getUserPayments().isEmpty()) {
             Set<UserPaymentDto> userPayments = new HashSet<>();

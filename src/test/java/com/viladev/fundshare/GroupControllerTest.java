@@ -390,8 +390,8 @@ class GroupControllerTest {
 			UserPaymentForm uPayment3 = new UserPaymentForm(USER_2_USERNAME, 20.0);
 			UserPaymentForm uPayment4 = new UserPaymentForm(USER_3_USERNAME, 10.0);
 
-			PaymentForm payment1 = new PaymentForm(GROUP_1_ID, Set.of(uPayment1, uPayment2));
-			PaymentForm payment2 = new PaymentForm(GROUP_1_ID, Set.of(uPayment3, uPayment4));
+			PaymentForm payment1 = new PaymentForm("PAYMENT1", GROUP_1_ID, Set.of(uPayment1, uPayment2));
+			PaymentForm payment2 = new PaymentForm("PAYMENT2", GROUP_1_ID, Set.of(uPayment3, uPayment4));
 			paymentService.createPayment(payment1);
 			paymentService.createPayment(payment2);
 
@@ -513,8 +513,6 @@ class GroupControllerTest {
 					.content(obj.writeValueAsString(form2))).andExpect(status().isBadRequest());
 		}
 
-		
-
 		@WithMockUser(username = USER_1_USERNAME)
 		@Test
 		void When_InviteToNonexistentGroupAndNonexistentUser_NotFound() throws Exception {
@@ -548,12 +546,14 @@ class GroupControllerTest {
 			groupUserRepository.save(new GroupUser(user2, group));
 			groupUserRepository.save(new GroupUser(user3, group));
 			// Payment 1: user1 pays 10 to user2 and 5 to user3
-			PaymentForm paymentForm = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0),
-					new UserPaymentForm(USER_3_USERNAME, 5.0)));
+			PaymentForm paymentForm = new PaymentForm("PAYMENT1TO2And3", GROUP_1_ID,
+					Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0),
+							new UserPaymentForm(USER_3_USERNAME, 5.0)));
 			paymentService.createPayment(paymentForm);
 			// Payment 2: user2 pays 10 to user1 and 5 to user3
-			PaymentForm paymentForm2 = new PaymentForm(GROUP_1_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0),
-					new UserPaymentForm(USER_3_USERNAME, 5.0)));
+			PaymentForm paymentForm2 = new PaymentForm("PAYMENT2TO1And3", GROUP_1_ID,
+					Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0),
+							new UserPaymentForm(USER_3_USERNAME, 5.0)));
 			Payment payment2 = paymentService.createPayment(paymentForm2);
 			payment2.setCreatedBy(user2);
 			paymentRepository.save(payment2);
@@ -565,10 +565,10 @@ class GroupControllerTest {
 			groupUserRepository.save(new GroupUser(user2, group2));
 			groupUserRepository.save(new GroupUser(user3, group2));
 			// Payment 3: user1 pays 10 to user2
-			PaymentForm paymentForm3 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
+			PaymentForm paymentForm3 = new PaymentForm("PAYMENT1TO2",GROUP_2_ID, Set.of(new UserPaymentForm(USER_2_USERNAME, 10.0)));
 			paymentService.createPayment(paymentForm3);
 			// Payment 4: user2 pays 10 to user1 and 5 to user3
-			PaymentForm paymentForm4 = new PaymentForm(GROUP_2_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0)));
+			PaymentForm paymentForm4 = new PaymentForm("PAYMENT2TO1And3",GROUP_2_ID, Set.of(new UserPaymentForm(USER_1_USERNAME, 10.0)));
 			Payment payment4 = paymentService.createPayment(paymentForm4);
 			payment4.setCreatedBy(user2);
 			paymentRepository.save(payment4);
@@ -649,7 +649,7 @@ class GroupControllerTest {
 		@Test
 		void When_KickYourSelfNonZeroBalance_Forbidden() throws Exception {
 			UserPaymentForm uPayment1 = new UserPaymentForm(USER_1_USERNAME, 10.0);
-			PaymentForm payment1 = new PaymentForm(GROUP_1_ID, Set.of(uPayment1));
+			PaymentForm payment1 = new PaymentForm("PAYMENTFORBIDDEN",GROUP_1_ID, Set.of(uPayment1));
 			paymentService.createPayment(payment1);
 			String resultString = mockMvc.perform(delete("/api/group/" + GROUP_1_ID + "/members/" + USER_2_USERNAME))
 					.andExpect(status().isForbidden()).andReturn().getResponse().getContentAsString();

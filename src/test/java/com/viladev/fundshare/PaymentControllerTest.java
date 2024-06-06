@@ -109,7 +109,7 @@ class PaymentControllerTest {
         groupUserRepository.save(new GroupUser(user1, group1));
         groupUserRepository.save(new GroupUser(user2, group1));
         groupUserRepository.save(new GroupUser(user3, group1));
-        
+
         Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
         groupRepository.save(group2);
         GROUP_2_ID = group2.getId();
@@ -137,7 +137,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees2 = new HashSet<>();
             payees2.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -186,7 +186,7 @@ class PaymentControllerTest {
 
             Set<UserPaymentForm> payees = new HashSet<>();
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -203,7 +203,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(NONEXISTING_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", NONEXISTING_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -220,7 +220,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(NONEXISTING_USER, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -237,7 +237,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 0.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -265,7 +265,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_1_USERNAME, 10.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_2_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -293,7 +293,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 10.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_2_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -322,7 +322,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -358,7 +358,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
@@ -414,7 +414,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
@@ -443,7 +443,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
             User otherUser = userRepository.findByUsername(USER_1_USERNAME);
@@ -460,7 +460,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
