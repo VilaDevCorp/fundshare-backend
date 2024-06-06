@@ -1,5 +1,7 @@
 package com.viladev.fundshare.service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -9,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +27,11 @@ import com.viladev.fundshare.model.Group;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
+import com.viladev.fundshare.model.dto.DebtDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.PaymentDto;
+import com.viladev.fundshare.model.dto.UserDto;
+import com.viladev.fundshare.model.dto.UserPaymentDto;
 import com.viladev.fundshare.repository.GroupRepository;
 import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
@@ -69,7 +73,8 @@ public class PaymentService {
                 || paymentForm.getGroupId() == null) {
             throw new EmptyFormFieldsException();
         }
-        User creator = userRepository.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
+
+        User creator = userRepository.findByUsername(AuthUtils.getUsername());
 
         Group group = groupRepository.findById(paymentForm.getGroupId())
                 .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
@@ -173,6 +178,57 @@ public class PaymentService {
         Slice<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, null,
                 pageable);
         return new PageDto<>(searchForm.getPage(), payments.hasNext(), payments.getContent());
+    }
+
+    @Transactional(readOnly = true)
+    public PageDto<DebtDto> searchDebts(String groupId, boolean ownDebt) throws NotAllowedResourceException {
+        UUID uuidGroupId = UUID.fromString(groupId);
+        String loggedUsername = AuthUtils.getUsername();
+        if (!groupUserRepository.existsByGroupIdAndUserUsername(uuidGroupId, loggedUsername)) {
+            throw new NotAllowedResourceException("User is not in the group");
+        }
+        String username = ownDebt ? loggedUsername : null;
+
+        List<PaymentDto> payments = paymentRepository
+                .findByGroupIdAndCreatedByUsername(uuidGroupId, username, Pageable.unpaged()).getContent();
+
+        List<DebtDto> debts = new ArrayList<>();
+
+        for (PaymentDto payment : payments) {
+            for (UserPaymentDto userPayment : payment.getUserPayments()) {
+                DebtDto debtElement = debts.stream()
+                        .filter((debt) -> (debt.getPayer().getUsername().equals(userPayment.getUser().getUsername())
+                                && debt.getPayee().getUsername().equals(payment.getCreatedBy().getUsername()))
+                                || (debt.getPayer().getUsername().equals(payment.getCreatedBy().getUsername())
+                                        && debt.getPayee().getUsername().equals(userPayment.getUser().getUsername())))
+                        .findFirst().orElse(null);
+                if (debtElement == null) {
+                    debtElement = new DebtDto(payment.getCreatedBy(), userPayment.getUser(), userPayment.getAmount());
+                    debts.add(debtElement);
+                } else {
+                    if (debtElement.getPayer().getUsername().equals(payment.getCreatedBy().getUsername())) {
+                        debtElement.setAmount(debtElement.getAmount() + userPayment.getAmount());
+                    } else {
+                        debtElement.setAmount(debtElement.getAmount() - userPayment.getAmount());
+                    }
+                }
+            }
+        }
+        for (DebtDto debt : debts) {
+            if (debt.getAmount() == 0) {
+                debts.remove(debt);
+            }
+            if (debt.getAmount() < 0) {
+                debt.setAmount(debt.getAmount() * -1);
+                UserDto temp = debt.getPayer();
+                debt.setPayer(debt.getPayee());
+                debt.setPayee(temp);
+            }
+        }
+        List<DebtDto> orderedList = debts.stream()
+                .sorted((debt1, debt2) -> debt2.getAmount().compareTo(debt1.getAmount())).toList();
+
+        return new PageDto<>(0, false, orderedList);
     }
 
 }

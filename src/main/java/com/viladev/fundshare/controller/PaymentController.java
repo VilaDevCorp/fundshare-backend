@@ -1,5 +1,6 @@
 package com.viladev.fundshare.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import javax.management.InstanceNotFoundException;
@@ -22,9 +23,11 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.PayeeIsNotInGroupException;
 import com.viladev.fundshare.exceptions.PayerIsNotInGroupException;
 import com.viladev.fundshare.forms.PaymentForm;
+import com.viladev.fundshare.forms.SearchDebtForm;
 import com.viladev.fundshare.forms.SearchPaymentForm;
 import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Payment;
+import com.viladev.fundshare.model.dto.DebtDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.model.dto.RequestDto;
@@ -90,6 +93,13 @@ public class PaymentController {
                     .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<Void>());
+    }
+
+    @PostMapping("/debt/search")
+    public ResponseEntity<ApiResponse<PageDto<DebtDto>>> searchDebts(@RequestBody SearchDebtForm searchForm)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        PageDto<DebtDto> result = paymentService.searchDebts(searchForm.getGroupId(), searchForm.isOwnDebts());
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
     }
 
 }
