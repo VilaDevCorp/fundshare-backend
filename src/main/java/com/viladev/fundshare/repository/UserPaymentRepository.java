@@ -26,8 +26,9 @@ public interface UserPaymentRepository extends JpaRepository<UserPayment, UUID> 
 
     @Query("SELECT new com.viladev.fundshare.model.dto.UserPaymentDto(up, true) FROM UserPayment up " +
             "WHERE (:groupId is null OR up.payment.group.id = :groupId) AND " +
-            "(:username is null OR (up.payment.createdBy.username = :username OR up.user.username = :username)) " +
+            "(:username is null OR (up.payment.createdBy.username = :username OR up.user.username = :username)) AND " +
+            "(:relatedUsername is null OR (up.payment.createdBy.username = :relatedUsername OR up.user.username = :relatedUsername)) " +
             " ORDER BY up.payment.createdAt DESC")
-    List<UserPaymentDto> findByGroupIdAndRelatedUser(UUID groupId, String username);
+    List<UserPaymentDto> findByGroupIdAndRelatedUser(UUID groupId, String username, String relatedUsername);
 
 }

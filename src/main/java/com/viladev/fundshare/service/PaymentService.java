@@ -2,6 +2,7 @@ package com.viladev.fundshare.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,6 +29,7 @@ import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
 import com.viladev.fundshare.model.dto.DebtDto;
+import com.viladev.fundshare.model.dto.GroupDebtDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.model.dto.UserDto;
@@ -190,7 +192,7 @@ public class PaymentService {
         String username = ownDebt ? loggedUsername : null;
 
         List<UserPaymentDto> userPayments = userPaymentRepository
-                .findByGroupIdAndRelatedUser(uuidGroupId, username);
+                .findByGroupIdAndRelatedUser(uuidGroupId, username, null);
 
         List<DebtDto> debts = new ArrayList<>();
 
@@ -231,6 +233,44 @@ public class PaymentService {
                 .sorted((debt1, debt2) -> debt2.getAmount().compareTo(debt1.getAmount())).toList();
 
         return new PageDto<>(0, false, orderedList);
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupDebtDto> getDebtsFromUserByGroup(String username)
+            throws NotAllowedResourceException, InstanceNotFoundException {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new InstanceNotFoundException();
+        }
+        String loggedUsername = AuthUtils.getUsername();
+        List<UserPaymentDto> userPayments = userPaymentRepository.findByGroupIdAndRelatedUser(null, username,
+                loggedUsername);
+
+        List<GroupDebtDto> debtList = new ArrayList<>();
+
+        for (UserPaymentDto up : userPayments) {
+            Optional<GroupDebtDto> groupDebt = debtList.stream()
+                    .filter((debt) -> debt.getGroup().getId().equals(up.getPayment().getGroup().getId()))
+                    .findFirst();
+            if (groupDebt.isEmpty()) {
+                GroupDebtDto newGroupDebt = new GroupDebtDto(up.getPayment().getGroup(), up.getAmount());
+                debtList.add(newGroupDebt);
+            } else {
+                if (up.getPayment().getCreatedBy().getUsername().equals(loggedUsername)) {
+                    groupDebt.get().setAmount(groupDebt.get().getAmount() + up.getAmount());
+                } else {
+                    groupDebt.get().setAmount(groupDebt.get().getAmount() - up.getAmount());
+                }
+            }
+        }
+
+        debtList.removeIf((debt) -> debt.getAmount() == 0);
+        List<GroupDebtDto> orderedList = debtList.stream()
+                .sorted((debt1, debt2) -> ((Double) Math.abs(debt2.getAmount())).compareTo(Math.abs(debt1.getAmount())))
+                .toList();
+
+        return orderedList;
+
     }
 
 }

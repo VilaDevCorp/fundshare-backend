@@ -28,6 +28,7 @@ import com.viladev.fundshare.forms.SearchPaymentForm;
 import com.viladev.fundshare.forms.SearchRequestForm;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.dto.DebtDto;
+import com.viladev.fundshare.model.dto.GroupDebtDto;
 import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.model.dto.RequestDto;
@@ -102,4 +103,10 @@ public class PaymentController {
         return ResponseEntity.ok().body(new ApiResponse<>(result));
     }
 
+    @GetMapping("/debt/{username}")
+    public ResponseEntity<ApiResponse<List<GroupDebtDto>>> getDebtWithUser(@PathVariable String username)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        List<GroupDebtDto> result = paymentService.getDebtsFromUserByGroup(username);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+    }
 }
