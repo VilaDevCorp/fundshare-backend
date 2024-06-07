@@ -18,12 +18,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @EntityGraph(value = "Payment.userPayments")
     Optional<Payment> findById(UUID id);
 
-    // @EntityGraph(value = "Payment.userPayments")
     @Query("SELECT new com.viladev.fundshare.model.dto.PaymentDto(p) FROM Payment p WHERE (:groupId is null OR p.group.id = :groupId) AND (:username is null OR p.createdBy.username = :username) ORDER BY p.createdAt DESC")
     Slice<PaymentDto> findByGroupIdAndCreatedByUsername(UUID groupId, String username, Pageable pageable);
-
-    @EntityGraph(value = "Payment.userPayments")
-    @Query("SELECT p FROM Payment p WHERE (:groupId is null OR p.group.id = :groupId) AND (:username is null OR p.createdBy.username = :username) ORDER BY p.createdAt DESC")
-    Slice<Payment> findByGroupIdAndCreatedByUsername2(UUID groupId, String username, Pageable pageable);
-
 }

@@ -182,35 +182,37 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public PageDto<DebtDto> searchDebts(String groupId, boolean ownDebt) throws NotAllowedResourceException {
-        UUID uuidGroupId = UUID.fromString(groupId);
+        UUID uuidGroupId = groupId == null ? null : UUID.fromString(groupId);
         String loggedUsername = AuthUtils.getUsername();
-        if (!groupUserRepository.existsByGroupIdAndUserUsername(uuidGroupId, loggedUsername)) {
+        if (uuidGroupId != null && !groupUserRepository.existsByGroupIdAndUserUsername(uuidGroupId, loggedUsername)) {
             throw new NotAllowedResourceException("User is not in the group");
         }
         String username = ownDebt ? loggedUsername : null;
 
-        List<PaymentDto> payments = paymentRepository
-                .findByGroupIdAndCreatedByUsername(uuidGroupId, username, Pageable.unpaged()).getContent();
+        List<UserPaymentDto> userPayments = userPaymentRepository
+                .findByGroupIdAndRelatedUser(uuidGroupId, username);
 
         List<DebtDto> debts = new ArrayList<>();
 
-        for (PaymentDto payment : payments) {
-            for (UserPaymentDto userPayment : payment.getUserPayments()) {
-                DebtDto debtElement = debts.stream()
-                        .filter((debt) -> (debt.getPayer().getUsername().equals(userPayment.getUser().getUsername())
-                                && debt.getPayee().getUsername().equals(payment.getCreatedBy().getUsername()))
-                                || (debt.getPayer().getUsername().equals(payment.getCreatedBy().getUsername())
-                                        && debt.getPayee().getUsername().equals(userPayment.getUser().getUsername())))
-                        .findFirst().orElse(null);
-                if (debtElement == null) {
-                    debtElement = new DebtDto(payment.getCreatedBy(), userPayment.getUser(), userPayment.getAmount());
-                    debts.add(debtElement);
+        for (UserPaymentDto userPayment : userPayments) {
+            DebtDto debtElement = debts.stream()
+                    .filter((debt) -> (debt.getPayer().getUsername().equals(userPayment.getUser().getUsername())
+                            && debt.getPayee().getUsername()
+                                    .equals(userPayment.getPayment().getCreatedBy().getUsername()))
+                            || (debt.getPayer().getUsername()
+                                    .equals(userPayment.getPayment().getCreatedBy().getUsername())
+                                    && debt.getPayee().getUsername().equals(userPayment.getUser().getUsername())))
+                    .findFirst().orElse(null);
+            if (debtElement == null) {
+                debtElement = new DebtDto(userPayment.getPayment().getCreatedBy(), userPayment.getUser(),
+                        userPayment.getAmount());
+                debts.add(debtElement);
+            } else {
+                if (debtElement.getPayer().getUsername()
+                        .equals(userPayment.getPayment().getCreatedBy().getUsername())) {
+                    debtElement.setAmount(debtElement.getAmount() + userPayment.getAmount());
                 } else {
-                    if (debtElement.getPayer().getUsername().equals(payment.getCreatedBy().getUsername())) {
-                        debtElement.setAmount(debtElement.getAmount() + userPayment.getAmount());
-                    } else {
-                        debtElement.setAmount(debtElement.getAmount() - userPayment.getAmount());
-                    }
+                    debtElement.setAmount(debtElement.getAmount() - userPayment.getAmount());
                 }
             }
         }
