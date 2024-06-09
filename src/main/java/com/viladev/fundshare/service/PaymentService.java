@@ -42,7 +42,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
-@Transactional
+@Transactional (rollbackFor = Exception.class)
 public class PaymentService {
 
     private final GroupRepository groupRepository;

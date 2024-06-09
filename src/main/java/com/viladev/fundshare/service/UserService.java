@@ -35,7 +35,7 @@ import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 @Service
-@Transactional
+@Transactional (rollbackFor = Exception.class)
 public class UserService {
 
     private final AuthenticationManager authenticationManager;

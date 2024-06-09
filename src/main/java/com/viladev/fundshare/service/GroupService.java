@@ -51,7 +51,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class GroupService {
 
     private final GroupRepository groupRepository;
