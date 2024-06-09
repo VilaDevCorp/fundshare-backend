@@ -191,6 +191,10 @@ public class GroupController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, "User not found"));
         }
+        if (!user.isValidated()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.NOT_VALIDATED_ACCOUNT, "User not validated"));
+        }
         return ResponseEntity.ok().body(new ApiResponse<>(new UserDto(user)));
     }
 
