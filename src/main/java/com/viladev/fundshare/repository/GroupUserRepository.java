@@ -24,6 +24,8 @@ public interface GroupUserRepository extends JpaRepository<GroupUser, UUID> {
             "   (select gu2.group from GroupUser gu2 where gu2.user.username = :username) " +
             "and gu.user.username != :username " +
             "and gu.group.id != :groupId " +
+            "and gu.user.id not IN (select gu3.user.id from GroupUser gu3 " +
+                                "where gu3.group.id = :groupId) " +
             "and not exists (select r from Request r " +
                                 "where r.group.id = :groupId AND r.user.username = gu.user.username) " +
             "order by gu.user.username asc")
