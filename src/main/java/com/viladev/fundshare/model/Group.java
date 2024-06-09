@@ -1,6 +1,8 @@
 package com.viladev.fundshare.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.data.annotation.Version;
@@ -38,7 +40,7 @@ public class Group extends BaseEntity {
     private Long version;
 
     @OneToMany(mappedBy = "group", orphanRemoval = true, cascade = CascadeType.ALL)
-    Set<GroupUser> groupUsers = new HashSet<>();
+    List<GroupUser> groupUsers = new ArrayList<>();
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Request> requests = new HashSet<>();

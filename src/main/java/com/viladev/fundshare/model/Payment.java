@@ -1,6 +1,8 @@
 package com.viladev.fundshare.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.CascadeType;
@@ -36,7 +38,7 @@ public class Payment extends BaseEntity {
     Group group;
 
     @OneToMany(mappedBy = "payment", orphanRemoval = true, cascade = CascadeType.ALL)
-    Set<UserPayment> userPayments = new HashSet<>();
+    List<UserPayment> userPayments = new ArrayList<>();
 
     public Payment(String description, User createdBy, Group group) {
         this.description = description;
