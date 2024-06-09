@@ -176,9 +176,16 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public PageDto<PaymentDto> searchPayments(SearchPaymentForm searchForm) {
         Pageable pageable = PageRequest.of(searchForm.getPage(), searchForm.getPageSize());
-        UUID groupId = UUID.fromString(searchForm.getGroupId());
-        Slice<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, null,
-                pageable);
+        Slice<PaymentDto> payments;
+        if (searchForm.isUserRelated()) {
+            String loggedUsername = AuthUtils.getUsername();
+            payments = paymentRepository.findByRelatedUsername(loggedUsername,
+                    pageable);
+        } else {
+            UUID groupId = UUID.fromString(searchForm.getGroupId());
+            payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, null,
+                    pageable);
+        }
         return new PageDto<>(searchForm.getPage(), payments.hasNext(), payments.getContent());
     }
 

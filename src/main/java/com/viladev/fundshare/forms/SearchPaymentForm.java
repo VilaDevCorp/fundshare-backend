@@ -9,4 +9,5 @@ import lombok.Setter;
 @Setter
 public class SearchPaymentForm extends SearchBaseForm {
     String groupId;
+    boolean userRelated;
 }
