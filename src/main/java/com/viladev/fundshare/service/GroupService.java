@@ -171,8 +171,11 @@ public class GroupService {
     }
 
     private void resetUserPayments(Set<UserPayment> userPayments) {
+
         Map<UUID, Double> userBalances = new HashMap<>();
         userPayments.stream().forEach(userPayment -> {
+            Payment payment = paymentRepository.findById(userPayment.getPayment().getId())
+                    .get();
             UUID payerId = userPayment.getPayment().getCreatedBy().getId();
             UUID payeeId = userPayment.getUser().getId();
             Double amount = userPayment.getAmount();
@@ -190,6 +193,12 @@ public class GroupService {
                 userBalances.put(payeeId, -amount);
             }
             userPaymentRepository.delete(userPayment);
+            payment.getUserPayments().remove(userPayment);
+            paymentRepository.save(payment);
+            if (payment.getUserPayments().isEmpty()) {
+                paymentRepository.delete(payment);
+            }
+
         });
         userBalances.entrySet().stream().forEach(entry -> {
             User user = userRepository.findById(entry.getKey()).get();
