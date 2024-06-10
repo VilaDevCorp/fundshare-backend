@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.validator.constraints.Length;
 import org.springframework.data.annotation.Version;
 
 import jakarta.persistence.CascadeType;
@@ -28,10 +29,11 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class Group extends BaseEntity {
-
     @NotNull
+    @Length(min = 1, max = 80)
     String name;
 
+    @Length(min = 1, max = 200)
     String description;
 
     boolean active = true;

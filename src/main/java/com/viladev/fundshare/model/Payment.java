@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.validator.constraints.Length;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -29,6 +31,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Payment extends BaseEntity {
 
+    @Length(min = 1, max = 150)
     private String description;
 
     // we need to fetch the userPayments eagerly as they are a fundamental part of
