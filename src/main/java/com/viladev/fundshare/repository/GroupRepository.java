@@ -22,8 +22,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 	Optional<Group> findById(UUID id);
 
 	@Query("SELECT new com.viladev.fundshare.model.dto.GroupDto(g, "
-			+ "(SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.user = :user )"
-			+ " - (SELECT sum(p.amount) from UserPayment p WHERE p.payment.group = g AND p.payment.createdBy = :user ))"
+			+ " (SELECT coalesce(sum(up.amount),0) from UserPayment up WHERE up.payment.group = g AND up.payment.createdBy = :user )"
+			+ "-(SELECT coalesce(sum(up.amount),0) from UserPayment up WHERE up.payment.group = g AND up.user = :user ))"
 			+ "FROM Group g WHERE "
 			+ " (:user IN (select gu.user from GroupUser gu where gu.group = g) ) AND "
 			+ "	("
@@ -31,7 +31,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 			+ "     ("
 			+ "			lower(g.name) like :keyword OR "
 			+ "			lower(g.description) like :keyword"
-			+ "     )" 
+			+ "     )"
 			+ "	)"
 			+ "ORDER BY g.createdAt DESC")
 	Slice<GroupDto> advancedSearch(@Param("user") User user, @Param("keyword") String keyword, Pageable pageable);
