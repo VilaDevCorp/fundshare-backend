@@ -28,6 +28,7 @@ import com.viladev.fundshare.exceptions.UsernameAlreadyInUseException;
 import com.viladev.fundshare.forms.LoginForm;
 import com.viladev.fundshare.forms.RegisterForm;
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.UserConf;
 import com.viladev.fundshare.model.dto.UserDto;
 import com.viladev.fundshare.model.dto.UserWithBalanceDto;
 import com.viladev.fundshare.repository.UserRepository;
@@ -197,6 +198,20 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(CodeErrors.INCORRECT_VALIDATION_CODE, e.getMessage()));
         }
+        return ResponseEntity.ok().body(new ApiResponse<>());
+    }
+
+    @PostMapping("/conf")
+    public ResponseEntity<ApiResponse<Void>> updateUserConf(
+            @RequestBody UserConf userConf)
+            throws InstanceNotFoundException {
+        String username = AuthUtils.getUsername();
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new InstanceNotFoundException();
+        }
+        user.setConf(userConf);
+        userRepository.save(user);
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 

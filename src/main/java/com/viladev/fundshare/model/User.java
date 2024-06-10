@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
@@ -41,6 +42,9 @@ public class User extends BaseEntity {
     boolean validated = false;
 
     Double balance = 0.0;
+
+    @Convert(converter = UserConfConverter.class)
+    UserConf conf = new UserConf();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ValidationCode> validationCodes = new HashSet<>();

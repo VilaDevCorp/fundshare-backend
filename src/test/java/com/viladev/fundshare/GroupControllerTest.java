@@ -595,7 +595,7 @@ class GroupControllerTest {
 			// should be deleted too
 			List<PaymentDto> payments = new ArrayList<>(groupPayments);
 			assertEquals(payments.size(), 1);
-			Set<UserPaymentDto> userPaymentsOfRemainingPayment = payments.get(0).getUserPayments();
+			List<UserPaymentDto> userPaymentsOfRemainingPayment = payments.get(0).getUserPayments();
 			assertEquals(userPaymentsOfRemainingPayment.size(), 1);
 			assertTrue(userPaymentsOfRemainingPayment.stream()
 					.allMatch(userPayment -> userPayment.getUser().getUsername().equals(USER_3_USERNAME)));

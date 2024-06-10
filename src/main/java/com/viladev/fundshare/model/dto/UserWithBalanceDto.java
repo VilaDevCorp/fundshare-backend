@@ -1,6 +1,7 @@
 package com.viladev.fundshare.model.dto;
 
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.UserConf;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,10 +18,14 @@ public class UserWithBalanceDto extends BaseEntityDto {
 
     Double balance = 0.0;
 
+    UserConf conf = new UserConf();
+
     public UserWithBalanceDto(User user) {
         this.email = user.getEmail();
         this.username = user.getUsername();
         this.balance = user.getBalance();
+        this.conf = user.getConf();
+
     }
 
     @Override
