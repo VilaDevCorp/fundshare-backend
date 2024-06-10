@@ -42,7 +42,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
-@Transactional (rollbackFor = Exception.class)
+@Transactional(rollbackFor = Exception.class)
 public class PaymentService {
 
     private final GroupRepository groupRepository;
@@ -225,18 +225,18 @@ public class PaymentService {
                 }
             }
         }
+        List<DebtDto> cleanList = new ArrayList<>();
         for (DebtDto debt : debts) {
             if (debt.getAmount() == 0) {
-                debts.remove(debt);
+                continue;
             }
-            if (debt.getAmount() < 0) {
-                debt.setAmount(debt.getAmount() * -1);
-                UserDto temp = debt.getPayer();
-                debt.setPayer(debt.getPayee());
-                debt.setPayee(temp);
+            if (debt.getAmount() > 0) {
+                cleanList.add(debt);
+            } else {
+                cleanList.add(new DebtDto(debt.getPayee(), debt.getPayer(), -debt.getAmount()));
             }
         }
-        List<DebtDto> orderedList = debts.stream()
+        List<DebtDto> orderedList = cleanList.stream()
                 .sorted((debt1, debt2) -> debt2.getAmount().compareTo(debt1.getAmount())).toList();
 
         return new PageDto<>(0, false, orderedList);
@@ -260,8 +260,13 @@ public class PaymentService {
                     .filter((debt) -> debt.getGroup().getId().equals(up.getPayment().getGroup().getId()))
                     .findFirst();
             if (groupDebt.isEmpty()) {
-                GroupDebtDto newGroupDebt = new GroupDebtDto(up.getPayment().getGroup(), up.getAmount());
-                debtList.add(newGroupDebt);
+                if (up.getPayment().getCreatedBy().getUsername().equals(loggedUsername)) {
+                    GroupDebtDto newGroupDebt = new GroupDebtDto(up.getPayment().getGroup(), up.getAmount());
+                    debtList.add(newGroupDebt);
+                } else {
+                    GroupDebtDto newGroupDebt = new GroupDebtDto(up.getPayment().getGroup(), -up.getAmount());
+                    debtList.add(newGroupDebt);
+                }
             } else {
                 if (up.getPayment().getCreatedBy().getUsername().equals(loggedUsername)) {
                     groupDebt.get().setAmount(groupDebt.get().getAmount() + up.getAmount());
