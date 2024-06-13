@@ -35,7 +35,7 @@ import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 @Service
-@Transactional
+@Transactional (rollbackFor = Exception.class)
 public class UserService {
 
     private final AuthenticationManager authenticationManager;
@@ -120,7 +120,11 @@ public class UserService {
     }
 
     public ValidationCode createValidationCode(String username, ValidationCodeTypeEnum type)
-            throws InstanceNotFoundException, SendEmailException, UserAlreadyValidatedException {
+            throws InstanceNotFoundException, SendEmailException, UserAlreadyValidatedException,
+            EmptyFormFieldsException {
+        if (username == null) {
+            throw new EmptyFormFieldsException();
+        }
         User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new InstanceNotFoundException();
@@ -177,7 +181,10 @@ public class UserService {
 
     public void activateAccount(String username, String code)
             throws InstanceNotFoundException, ExpiredValidationCodeException,
-            AlreadyUsedValidationCodeException, IncorrectValidationCodeException {
+            AlreadyUsedValidationCodeException, IncorrectValidationCodeException, EmptyFormFieldsException {
+        if (username == null || code == null) {
+            throw new EmptyFormFieldsException();
+        }
         validateCode(username, ValidationCodeTypeEnum.ACTIVATE_ACCOUNT, code);
         User user = userRepository.findByUsername(username);
         user.setValidated(true);
@@ -186,7 +193,11 @@ public class UserService {
 
     public void resetPassword(String username, String code, String newPassword)
             throws InstanceNotFoundException, ExpiredValidationCodeException,
-            AlreadyUsedValidationCodeException, IncorrectValidationCodeException {
+            AlreadyUsedValidationCodeException, IncorrectValidationCodeException, EmptyFormFieldsException {
+        if (username == null || code == null) {
+            throw new EmptyFormFieldsException();
+        }
+
         validateCode(username, ValidationCodeTypeEnum.RESET_PASSWORD, code);
         User user = userRepository.findByUsername(username);
         user.setPassword(new BCryptPasswordEncoder().encode(newPassword));

@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Launch PostgreSQL
-        run: docker-compose up -d db db-test
+        run: docker-compose up -d db-test
       - uses: actions/setup-java@v4
         with:
           distribution: "oracle"
@@ -36,11 +36,8 @@ jobs:
   deploy:
     needs: [test]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      # - uses: actions/download-artifact@v4
-      #   with:
-      #     path: fundshare-0.0.1-SNAPSHOT.jar
       - name: Deploy to Contabo server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -54,5 +51,7 @@ jobs:
             ${{ secrets.GIT_PULL_COMMAND }}
             mvn package -B -DskipTests
             docker build -t fundshare-backend .
+            docker build -t fundshare-backend-e2e  -f DockerfilePre .
             docker-compose -f docker-compose-prod.yml up -d
+
 #git pull https://davilasanvilar:{TOKEN}@github.com/davilasanvilar/fundshare-backend.git

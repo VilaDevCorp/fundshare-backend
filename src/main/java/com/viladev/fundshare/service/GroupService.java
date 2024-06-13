@@ -1,6 +1,8 @@
 package com.viladev.fundshare.service;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -10,6 +12,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -23,12 +28,22 @@ import com.viladev.fundshare.exceptions.NotAllowedResourceException;
 import com.viladev.fundshare.exceptions.UserAlreadyInvitedException;
 import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
+import com.viladev.fundshare.forms.SearchGroupForm;
+import com.viladev.fundshare.forms.SearchRequestForm;
+import com.viladev.fundshare.forms.SearchUserForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.GroupUser;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.UserPayment;
+import com.viladev.fundshare.model.dto.GroupDto;
+import com.viladev.fundshare.model.dto.PageDto;
+import com.viladev.fundshare.model.dto.PaymentDto;
+import com.viladev.fundshare.model.dto.RequestDto;
+import com.viladev.fundshare.model.dto.UserDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
 import com.viladev.fundshare.repository.RequestRepository;
 import com.viladev.fundshare.repository.UserPaymentRepository;
@@ -36,7 +51,7 @@ import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.utils.AuthUtils;
 
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class GroupService {
 
     private final GroupRepository groupRepository;
@@ -51,10 +66,13 @@ public class GroupService {
 
     private final PaymentService paymentService;
 
+    private final GroupUserRepository groupUserRepository;
+
     @Autowired
     public GroupService(GroupRepository groupRepository, UserRepository userRepository,
             RequestRepository requestRepository, PaymentRepository paymentRepository,
-            UserPaymentRepository userPaymentRepository, PaymentService paymentService) {
+            UserPaymentRepository userPaymentRepository, PaymentService paymentService,
+            GroupUserRepository groupUserRepository) {
 
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
@@ -62,6 +80,7 @@ public class GroupService {
         this.paymentRepository = paymentRepository;
         this.userPaymentRepository = userPaymentRepository;
         this.paymentService = paymentService;
+        this.groupUserRepository = groupUserRepository;
     }
 
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
@@ -70,8 +89,9 @@ public class GroupService {
             throw new EmptyFormFieldsException();
         }
         Group group = new Group(name, description, creator);
-        group.setUsers(Set.of(creator));
-        return groupRepository.save(group);
+        group = groupRepository.save(group);
+        groupUserRepository.save(new GroupUser(creator, group));
+        return group;
     }
 
     public Group editGroup(UUID id, String name, String description)
@@ -100,8 +120,23 @@ public class GroupService {
         return groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
     }
 
-    private void resetPayments(Set<Payment> payments) {
-        Map<UUID, Double> userBalances = new HashMap<>();
+    @Transactional(readOnly = true)
+    public PageDto<GroupDto> searchGroups(SearchGroupForm form) {
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
+        User user = userRepository.findByUsername(AuthUtils.getUsername());
+        String keyword = null;
+        if (form.getKeyword() != null) {
+            keyword = "%" + form.getKeyword().toLowerCase() + "%";
+        }
+        Slice<GroupDto> result = groupRepository.advancedSearch(user, keyword, pageable);
+        return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+    }
+
+    private void resetPayments(List<PaymentDto> payments) {
+        Map<String, Double> userBalances = new HashMap<>();
         // we loop through all the payments
         payments.stream().forEach(payment -> {
             // We use this variable to store the total amount of the payment to add it to
@@ -112,32 +147,35 @@ public class GroupService {
             // balances
             payment.getUserPayments().stream().forEach(userPayment -> {
                 totalAmount.updateAndGet(value -> value + userPayment.getAmount());
-                if (userBalances.containsKey(userPayment.getUser().getId())) {
-                    userBalances.put(userPayment.getUser().getId(),
-                            userBalances.get(userPayment.getUser().getId()) - userPayment.getAmount());
+                if (userBalances.containsKey(userPayment.getUser().getUsername())) {
+                    userBalances.put(userPayment.getUser().getUsername(),
+                            userBalances.get(userPayment.getUser().getUsername()) - userPayment.getAmount());
                 } else {
-                    userBalances.put(userPayment.getUser().getId(), -userPayment.getAmount());
+                    userBalances.put(userPayment.getUser().getUsername(), -userPayment.getAmount());
                 }
             });
-            if (userBalances.containsKey(payment.getCreatedBy().getId())) {
-                userBalances.put(payment.getCreatedBy().getId(),
-                        userBalances.get(payment.getCreatedBy().getId()) + totalAmount.get());
+            if (userBalances.containsKey(payment.getCreatedBy().getUsername())) {
+                userBalances.put(payment.getCreatedBy().getUsername(),
+                        userBalances.get(payment.getCreatedBy().getUsername()) + totalAmount.get());
             } else {
-                userBalances.put(payment.getCreatedBy().getId(), totalAmount.get());
+                userBalances.put(payment.getCreatedBy().getUsername(), totalAmount.get());
             }
-            paymentRepository.delete(payment);
+            paymentRepository.deleteById(payment.getId());
         });
 
         userBalances.entrySet().stream().forEach(entry -> {
-            User user = userRepository.findById(entry.getKey()).get();
+            User user = userRepository.findByUsername(entry.getKey());
             user.setBalance(user.getBalance() + entry.getValue());
             userRepository.save(user);
         });
     }
 
     private void resetUserPayments(Set<UserPayment> userPayments) {
+
         Map<UUID, Double> userBalances = new HashMap<>();
         userPayments.stream().forEach(userPayment -> {
+            Payment payment = paymentRepository.findById(userPayment.getPayment().getId())
+                    .get();
             UUID payerId = userPayment.getPayment().getCreatedBy().getId();
             UUID payeeId = userPayment.getUser().getId();
             Double amount = userPayment.getAmount();
@@ -155,6 +193,12 @@ public class GroupService {
                 userBalances.put(payeeId, -amount);
             }
             userPaymentRepository.delete(userPayment);
+            payment.getUserPayments().remove(userPayment);
+            paymentRepository.save(payment);
+            if (payment.getUserPayments().isEmpty()) {
+                paymentRepository.delete(payment);
+            }
+
         });
         userBalances.entrySet().stream().forEach(entry -> {
             User user = userRepository.findById(entry.getKey()).get();
@@ -166,15 +210,17 @@ public class GroupService {
     public void deleteGroup(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
         Group group = groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
         AuthUtils.checkIfCreator(group);
-        Set<Payment> payments = paymentRepository.findByGroupId(id);
+        Pageable pageable = Pageable.unpaged();
+        List<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(id, null, pageable)
+                .getContent();
         resetPayments(payments);
         groupRepository.delete(group);
     }
 
-    public Request createRequest(UUID groupId, String username)
+    public Set<Request> createRequests(UUID groupId, String[] usernames)
             throws InstanceNotFoundException, NotAllowedResourceException, UserAlreadyPresentException,
             UserAlreadyInvitedException, EmptyFormFieldsException, InactiveGroupException {
-        if (groupId == null || username == null) {
+        if (groupId == null || usernames == null || usernames.length == 0) {
             throw new EmptyFormFieldsException();
         }
         Group group = groupRepository.findById(groupId)
@@ -183,20 +229,32 @@ public class GroupService {
             throw new InactiveGroupException();
         }
 
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            throw new InstanceNotFoundException("User not found");
+        Set<Request> requests = new HashSet<>();
+
+        for (String username : usernames) {
+            User user = userRepository.findByUsernameAndValidatedTrue(username);
+            if (user == null) {
+                throw new InstanceNotFoundException("User not found");
+            }
+            if (groupUserRepository.existsByGroupIdAndUserUsername(groupId, user.getUsername())) {
+                continue;
+            }
+            if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
+                continue;
+            }
+            AuthUtils.checkIfCreator(group);
+            Request request = new Request(group, user);
+            request = requestRepository.save(request);
+            requests.add(request);
         }
-        if (group.getUsers().contains(user)) {
-            throw new UserAlreadyPresentException("User already present in the group");
-        }
-        if (requestRepository.findByGroupIdAndUserId(groupId, user.getId()) != null) {
-            throw new UserAlreadyInvitedException("User already invited to the group");
-        }
-        AuthUtils.checkIfCreator(group);
-        Request request = new Request(group, user);
-        request = requestRepository.save(request);
-        return request;
+        return requests;
+    }
+
+    private void removeUserFromGroup(Group group, String username) {
+        GroupUser groupUser = groupUserRepository.findByGroupIdAndUserUsername(group.getId(), username);
+        group.getGroupUsers().remove(groupUser);
+        groupRepository.save(group);
+        groupUserRepository.delete(groupUser);
     }
 
     // The user can only kick himself (payments are kept) The creator of the group
@@ -219,7 +277,7 @@ public class GroupService {
         if (group.getCreatedBy().equals(user)) {
             throw new KickedCreatorException();
         }
-        if (!group.getUsers().contains(user)) {
+        if (!groupUserRepository.existsByGroupIdAndUserUsername(groupId, user.getUsername())) {
             throw new UserKickedIsNotMember(null);
         }
 
@@ -228,21 +286,59 @@ public class GroupService {
             if (userBalanceInGroup != 0) {
                 throw new NonZeroBalanceException("You cannot leave the group with a non-zero balance");
             }
-            group.getUsers().remove(user);
-            groupRepository.save(group);
+            removeUserFromGroup(group, username);
         } else {
             AuthUtils.checkIfCreator(group);
-            Set<Payment> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username);
+            List<PaymentDto> payments = paymentRepository.findByGroupIdAndCreatedByUsername(groupId, username,
+                    Pageable.unpaged()).getContent();
             resetPayments(payments);
             Set<UserPayment> userPayments = userPaymentRepository.findByPaymentGroupIdAndUserUsername(groupId,
                     username);
             resetUserPayments(userPayments);
-
-            group = groupRepository.findById(groupId).get();
-            group.getUsers().remove(user);
-            groupRepository.save(group);
+            removeUserFromGroup(group, username);
         }
 
+    }
+
+    public PageDto<UserDto> findRelatedUsers(SearchUserForm form)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        String username = AuthUtils.getUsername();
+        User user = userRepository.findByUsername(username);
+
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
+        UUID groupId = UUID.fromString(form.getGroupId());
+        Slice<UserDto> result = groupUserRepository.findRelatedUsers(
+                user.getUsername(), groupId, pageable);
+        return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+    }
+
+    public PageDto<RequestDto> findRequestsOfUser(SearchRequestForm form)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        String username = AuthUtils.getUsername();
+        User user = userRepository.findByUsername(username);
+
+        Pageable pageable = Pageable.unpaged();
+        if (form.getPageSize() != null) {
+            pageable = PageRequest.of(form.getPage(), form.getPageSize());
+        }
+
+        if (form.getGroupId() != null) {
+            UUID groupId = UUID.fromString(form.getGroupId());
+            Group group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new InstanceNotFoundException("Group not found"));
+            if (group.getGroupUsers().stream().noneMatch(groupUser -> groupUser.getUser().equals(user))) {
+                throw new NotAllowedResourceException("You are not a member of this group");
+            }
+            Slice<RequestDto> result = requestRepository.findByGroupId(
+                    groupId, pageable);
+            return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+        } else {
+            Slice<RequestDto> result = requestRepository.findByUserIdOrderByCreatedAt(user.getId(), pageable);
+            return new PageDto<>(form.getPage(), result.hasNext(), result.getContent());
+        }
     }
 
     public void respondRequest(UUID requestId, boolean accept)
@@ -260,10 +356,7 @@ public class GroupService {
             if (!request.getGroup().isActive()) {
                 throw new InactiveGroupException();
             }
-            request.getGroup().getUsers().add(request.getUser());
-            request.getUser().getGroups().add(request.getGroup());
-            groupRepository.save(request.getGroup());
-            userRepository.save(request.getUser());
+            groupUserRepository.save(new GroupUser(request.getUser(), request.getGroup()));
         }
         requestRepository.delete(request);
     }
@@ -281,6 +374,12 @@ public class GroupService {
         });
         groupRepository.save(group.get());
 
+    }
+
+    public void deleteRequest(UUID id) throws InstanceNotFoundException, NotAllowedResourceException {
+        Request request = requestRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        AuthUtils.checkIfCreator(request.getGroup());
+        requestRepository.delete(request);
     }
 
 }

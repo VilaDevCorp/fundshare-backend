@@ -1,11 +1,13 @@
 package com.viladev.fundshare.controller;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,15 +30,21 @@ import com.viladev.fundshare.exceptions.UserAlreadyPresentException;
 import com.viladev.fundshare.exceptions.UserKickedIsNotMember;
 import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.RequestForm;
+import com.viladev.fundshare.forms.SearchGroupForm;
+import com.viladev.fundshare.forms.SearchRequestForm;
+import com.viladev.fundshare.forms.SearchUserForm;
 import com.viladev.fundshare.model.Group;
-import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.Request;
+import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.GroupDto;
+import com.viladev.fundshare.model.dto.PageDto;
 import com.viladev.fundshare.model.dto.RequestDto;
+import com.viladev.fundshare.model.dto.UserDto;
+import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.UserService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.ErrorCodes;
+import com.viladev.fundshare.utils.CodeErrors;
 
 @RestController
 @RequestMapping("/api")
@@ -44,9 +52,12 @@ public class GroupController {
 
     private final GroupService groupService;
 
+    private final UserRepository userRepository;
+
     @Autowired
-    public GroupController(UserService userService, GroupService groupService) {
+    public GroupController(UserService userService, GroupService groupService, UserRepository userRepository) {
         this.groupService = groupService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/group")
@@ -57,17 +68,18 @@ public class GroupController {
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(newGroup)));
     }
 
-    @PatchMapping("/group")
-    public ResponseEntity<ApiResponse<GroupDto>> editGroup(@RequestBody GroupForm groupForm)
+    @PatchMapping("/group/{id}")
+    public ResponseEntity<ApiResponse<GroupDto>> editGroup(@PathVariable String id, @RequestBody GroupForm groupForm)
             throws InstanceNotFoundException, EmptyFormFieldsException, NotAllowedResourceException {
 
         Group editedGroup;
         try {
-            editedGroup = groupService.editGroup(groupForm.getId(), groupForm.getName(),
+            UUID groupId = UUID.fromString(id);
+            editedGroup = groupService.editGroup(groupId, groupForm.getName(),
                     groupForm.getDescription());
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
 
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(editedGroup)));
@@ -81,6 +93,13 @@ public class GroupController {
         return ResponseEntity.ok().body(new ApiResponse<GroupDto>(new GroupDto(group)));
     }
 
+    @PostMapping("/group/search")
+    public ResponseEntity<ApiResponse<PageDto<GroupDto>>> searchGroups(@RequestBody SearchGroupForm searchForm) {
+        PageDto<GroupDto> result = groupService.searchGroups(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+
+    }
+
     @DeleteMapping("/group/{groupId}")
     public ResponseEntity<ApiResponse<Void>> deleteGroup(@PathVariable("groupId") UUID groupId)
             throws InstanceNotFoundException, NotAllowedResourceException {
@@ -88,21 +107,22 @@ public class GroupController {
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 
-    @PostMapping("/group/request")
-    public ResponseEntity<ApiResponse<RequestDto>> createRequest(@RequestBody RequestForm requestForm)
+    @PostMapping("/request")
+    public ResponseEntity<ApiResponse<Set<RequestDto>>> createRequest(@RequestBody RequestForm requestForm)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
         try {
-            Request request = groupService.createRequest(requestForm.getGroupId(), requestForm.getUsername());
-            return ResponseEntity.ok().body(new ApiResponse<>(new RequestDto(request)));
+            Set<Request> requests = groupService.createRequests(requestForm.getGroupId(), requestForm.getUsernames());
+            Set<RequestDto> requestDtos = RequestDto.toSetRequestDto(requests);
+            return ResponseEntity.ok().body(new ApiResponse<>(requestDtos));
         } catch (UserAlreadyInvitedException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.ALREADY_INVITED_USER, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.ALREADY_INVITED_USER, e.getMessage()));
         } catch (UserAlreadyPresentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(ErrorCodes.ALREADY_MEMBER_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.ALREADY_MEMBER_GROUP, e.getMessage()));
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
 
     }
@@ -117,20 +137,27 @@ public class GroupController {
             return ResponseEntity.ok().body(new ApiResponse<>());
         } catch (KickedCreatorException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.KICKED_CREATOR, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.KICKED_CREATOR, e.getMessage()));
         } catch (UserKickedIsNotMember e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(ErrorCodes.NOT_GROUP_MEMBER, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.NOT_GROUP_MEMBER, e.getMessage()));
         } catch (NonZeroBalanceException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.NON_ZERO_BALANCE, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.NON_ZERO_BALANCE, e.getMessage()));
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
     }
 
-    @PostMapping("/group/request/{requestId}")
+    @PostMapping("/request/search")
+    public ResponseEntity<ApiResponse<PageDto<RequestDto>>> getUserRequests(@RequestBody SearchRequestForm searchForm)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        PageDto<RequestDto> result = groupService.findRequestsOfUser(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+    }
+
+    @PostMapping("/request/{requestId}")
     public ResponseEntity<ApiResponse<Void>> respondRequest(@PathVariable("requestId") UUID requestId,
             @RequestParam boolean accept)
             throws InstanceNotFoundException, NotAllowedResourceException, EmptyFormFieldsException {
@@ -138,7 +165,7 @@ public class GroupController {
             groupService.respondRequest(requestId, accept);
         } catch (InactiveGroupException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(ErrorCodes.CLOSED_GROUP, e.getMessage()));
+                    .body(new ApiResponse<>(CodeErrors.CLOSED_GROUP, e.getMessage()));
         }
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
@@ -149,4 +176,33 @@ public class GroupController {
         groupService.closeGroup(groupId);
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
+
+    @DeleteMapping("/request/{requestId}")
+    public ResponseEntity<ApiResponse<Void>> deleteRequest(@PathVariable("requestId") UUID requestId)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        groupService.deleteRequest(requestId);
+        return ResponseEntity.ok().body(new ApiResponse<>());
+    }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, "User not found"));
+        }
+        if (!user.isValidated()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(CodeErrors.NOT_VALIDATED_ACCOUNT, "User not validated"));
+        }
+        return ResponseEntity.ok().body(new ApiResponse<>(new UserDto(user)));
+    }
+
+    @PostMapping("/user/search")
+    public ResponseEntity<ApiResponse<PageDto<UserDto>>> searchUsers(@RequestBody SearchUserForm searchForm)
+            throws InstanceNotFoundException, NotAllowedResourceException {
+        PageDto<UserDto> result = groupService.findRelatedUsers(searchForm);
+        return ResponseEntity.ok().body(new ApiResponse<>(result));
+    }
+
 }

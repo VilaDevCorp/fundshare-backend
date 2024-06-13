@@ -1,8 +1,8 @@
 package com.viladev.fundshare.utils;
 
-public class ErrorCodes {
+public class CodeErrors {
 
-    private ErrorCodes() {
+    private CodeErrors() {
     }
 
     public static final String NOT_JWT_TOKEN = "NOT_JWT_TOKEN";

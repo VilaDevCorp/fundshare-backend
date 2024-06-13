@@ -12,7 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.ErrorCodes;
+import com.viladev.fundshare.utils.CodeErrors;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -39,7 +39,7 @@ public class JwtFilter extends OncePerRequestFilter {
         ObjectMapper objectMapper = new ObjectMapper();
         if (!request.getRequestURI().matches("/api/public/.*")) {
             if (request.getCookies() == null) {
-                ApiResponse<Void> apiResponse = new ApiResponse<>(ErrorCodes.NOT_JWT_TOKEN, "Not cookies present");
+                ApiResponse<Void> apiResponse = new ApiResponse<>(CodeErrors.NOT_JWT_TOKEN, "Not cookies present");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                 return;
@@ -49,20 +49,20 @@ public class JwtFilter extends OncePerRequestFilter {
                     .findFirst().orElse(null);
             String csrf = request.getHeader("X-API-CSRF");
             if (jwtCookie == null) {
-                ApiResponse<Void> apiResponse = new ApiResponse<>(ErrorCodes.NOT_JWT_TOKEN, "Not JWT token present");
+                ApiResponse<Void> apiResponse = new ApiResponse<>(CodeErrors.NOT_JWT_TOKEN, "Not JWT token present");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                 return;
             }
             if (csrf == null) {
-                ApiResponse<Void> apiResponse = new ApiResponse<>(ErrorCodes.NOT_CSRF_TOKEN, "Not CSRF token present");
+                ApiResponse<Void> apiResponse = new ApiResponse<>(CodeErrors.NOT_CSRF_TOKEN, "Not CSRF token present");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                 return;
             }
             Authentication authToken = jwtUtils.validateToken(jwtCookie.getValue(), csrf);
             if (authToken == null) {
-                ApiResponse<Void> apiResponse = new ApiResponse<>(ErrorCodes.INVALID_TOKEN, "Invalid jwt token");
+                ApiResponse<Void> apiResponse = new ApiResponse<>(CodeErrors.INVALID_TOKEN, "Invalid jwt token");
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
                 return;

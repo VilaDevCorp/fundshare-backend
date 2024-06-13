@@ -3,12 +3,14 @@ package com.viladev.fundshare.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.validator.constraints.Length;
 import org.springframework.data.annotation.Version;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
@@ -31,6 +33,7 @@ public class User extends BaseEntity {
 
     @Column(unique = true)
     @NotNull
+    @Length(min = 1, max = 80)
     String username;
 
     @NotNull
@@ -42,8 +45,8 @@ public class User extends BaseEntity {
 
     Double balance = 0.0;
 
-    @ManyToMany(mappedBy = "users")
-    private Set<Group> groups;
+    @Convert(converter = UserConfConverter.class)
+    UserConf conf = new UserConf();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ValidationCode> validationCodes = new HashSet<>();

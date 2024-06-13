@@ -1,7 +1,11 @@
 package com.viladev.fundshare.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+
+import org.hibernate.validator.constraints.Length;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -27,6 +31,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Payment extends BaseEntity {
 
+    @Length(min = 1, max = 150)
+    private String description;
+
     // we need to fetch the userPayments eagerly as they are a fundamental part of
     // the payment
     @ManyToOne(optional = false)
@@ -34,9 +41,10 @@ public class Payment extends BaseEntity {
     Group group;
 
     @OneToMany(mappedBy = "payment", orphanRemoval = true, cascade = CascadeType.ALL)
-    Set<UserPayment> userPayments = new HashSet<>();
+    List<UserPayment> userPayments = new ArrayList<>();
 
-    public Payment(User createdBy, Group group) {
+    public Payment(String description, User createdBy, Group group) {
+        this.description = description;
         this.createdBy = createdBy;
         this.group = group;
     }

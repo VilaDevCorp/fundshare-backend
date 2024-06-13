@@ -9,14 +9,14 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class RequestForm {
+public class GroupUserForm {
 
+    private String username;
     private UUID groupId;
-    private String[] usernames;
 
-    public RequestForm(UUID groupId, String[] usernames) {
+    public GroupUserForm(String username, UUID groupId) {
+        this.username = username;
         this.groupId = groupId;
-        this.usernames = usernames;
     }
 
 }

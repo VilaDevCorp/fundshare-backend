@@ -1,38 +1,33 @@
 package com.viladev.fundshare;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viladev.fundshare.forms.GroupForm;
 import com.viladev.fundshare.forms.PaymentForm;
 import com.viladev.fundshare.forms.UserPaymentForm;
 import com.viladev.fundshare.model.Group;
+import com.viladev.fundshare.model.GroupUser;
 import com.viladev.fundshare.model.Payment;
 import com.viladev.fundshare.model.User;
 import com.viladev.fundshare.model.dto.PaymentDto;
 import com.viladev.fundshare.repository.GroupRepository;
+import com.viladev.fundshare.repository.GroupUserRepository;
 import com.viladev.fundshare.repository.PaymentRepository;
-import com.viladev.fundshare.repository.UserPaymentRepository;
 import com.viladev.fundshare.repository.UserRepository;
 import com.viladev.fundshare.service.GroupService;
 import com.viladev.fundshare.service.PaymentService;
 import com.viladev.fundshare.utils.ApiResponse;
-import com.viladev.fundshare.utils.ErrorCodes;
+import com.viladev.fundshare.utils.CodeErrors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -43,7 +38,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -93,6 +87,9 @@ class PaymentControllerTest {
     private PaymentService paymentService;
 
     @Autowired
+    private GroupUserRepository groupUserRepository;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -107,13 +104,16 @@ class PaymentControllerTest {
         userRepository.save(user2);
         userRepository.save(user3);
         Group group1 = new Group(GROUP_1_NAME, GROUP_1_DESCRIPTION, user1);
-        group1.setUsers(Set.of(user1, user2, user3));
         groupRepository.save(group1);
         GROUP_1_ID = group1.getId();
+        groupUserRepository.save(new GroupUser(user1, group1));
+        groupUserRepository.save(new GroupUser(user2, group1));
+        groupUserRepository.save(new GroupUser(user3, group1));
+
         Group group2 = new Group(GROUP_2_NAME, GROUP_2_DESCRIPTION, user1);
-        group2.setUsers(Set.of(user1));
         groupRepository.save(group2);
         GROUP_2_ID = group2.getId();
+        groupUserRepository.save(new GroupUser(user1, group2));
     }
 
     @AfterEach
@@ -137,7 +137,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees2 = new HashSet<>();
             payees2.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -186,7 +186,7 @@ class PaymentControllerTest {
 
             Set<UserPaymentForm> payees = new HashSet<>();
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -203,7 +203,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(NONEXISTING_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", NONEXISTING_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -220,7 +220,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(NONEXISTING_USER, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -237,7 +237,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 0.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -255,7 +255,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(ErrorCodes.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
+            assertEquals(CodeErrors.NOT_ABOVE_0_AMOUNT, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_2_USERNAME)
@@ -265,7 +265,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_1_USERNAME, 10.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_2_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -283,7 +283,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(ErrorCodes.PAYER_NOT_IN_GROUP, result.getErrorCode());
+            assertEquals(CodeErrors.PAYER_NOT_IN_GROUP, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_1_USERNAME)
@@ -293,7 +293,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 10.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_2_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_2_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -311,7 +311,7 @@ class PaymentControllerTest {
             } catch (Exception e) {
                 assertTrue(false, "Error parsing response");
             }
-            assertEquals(ErrorCodes.PAYEE_NOT_IN_GROUP, result.getErrorCode());
+            assertEquals(CodeErrors.PAYEE_NOT_IN_GROUP, result.getErrorCode());
         }
 
         @WithMockUser(username = USER_1_USERNAME)
@@ -322,7 +322,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
 
-            PaymentForm form1 = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form1 = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             ObjectMapper obj = new ObjectMapper();
 
@@ -341,7 +341,7 @@ class PaymentControllerTest {
                 assertTrue(false, "Error parsing response");
             }
             String errorCode = result.getErrorCode();
-            assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
+            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
         }
     }
@@ -358,7 +358,7 @@ class PaymentControllerTest {
             payees.add(new UserPaymentForm(USER_2_USERNAME, 100.0));
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
@@ -414,7 +414,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
@@ -443,7 +443,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_3_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
             User otherUser = userRepository.findByUsername(USER_1_USERNAME);
@@ -460,7 +460,7 @@ class PaymentControllerTest {
             Set<UserPaymentForm> payees = new HashSet<>();
             payees.add(new UserPaymentForm(USER_2_USERNAME, 50.0));
 
-            PaymentForm form = new PaymentForm(GROUP_1_ID, payees);
+            PaymentForm form = new PaymentForm("PAYMENT", GROUP_1_ID, payees);
 
             Payment payment = paymentService.createPayment(form);
 
@@ -482,7 +482,7 @@ class PaymentControllerTest {
                 assertTrue(false, "Error parsing response");
             }
             String errorCode = result.getErrorCode();
-            assertEquals(ErrorCodes.CLOSED_GROUP, errorCode);
+            assertEquals(CodeErrors.CLOSED_GROUP, errorCode);
 
         }
     }

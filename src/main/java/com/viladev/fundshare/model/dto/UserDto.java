@@ -1,6 +1,7 @@
 package com.viladev.fundshare.model.dto;
 
 import com.viladev.fundshare.model.User;
+import com.viladev.fundshare.model.UserConf;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,9 +16,20 @@ public class UserDto extends BaseEntityDto {
 
     String username;
 
+    UserConf conf = new UserConf();
+
     public UserDto(User user) {
         this.email = user.getEmail();
         this.username = user.getUsername();
+        this.conf = user.getConf();
+    }
+
+    public static UserDto[] toUserDtoArray(User[] users) {
+        UserDto[] userDtos = new UserDto[users.length];
+        for (int i = 0; i < users.length; i++) {
+            userDtos[i] = new UserDto(users[i]);
+        }
+        return userDtos;
     }
 
     @Override
