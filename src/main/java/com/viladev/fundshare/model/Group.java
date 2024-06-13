@@ -33,7 +33,7 @@ public class Group extends BaseEntity {
     @Length(min = 1, max = 80)
     String name;
 
-    @Length(min = 1, max = 200)
+    @Length(max = 200)
     String description;
 
     boolean active = true;

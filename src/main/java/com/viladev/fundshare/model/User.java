@@ -3,6 +3,7 @@ package com.viladev.fundshare.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.validator.constraints.Length;
 import org.springframework.data.annotation.Version;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -32,6 +33,7 @@ public class User extends BaseEntity {
 
     @Column(unique = true)
     @NotNull
+    @Length(min = 1, max = 80)
     String username;
 
     @NotNull
