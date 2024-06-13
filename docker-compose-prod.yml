@@ -6,12 +6,27 @@ services:
       - "POSTGRES_PASSWORD=mypassword"
       - "POSTGRES_USER=fundshare"
     volumes:
-      - db:/data/db
+      - db:/var/lib/postgresql/data
+  db-e2e:
+    image: "postgres:16-alpine"
+    environment:
+      - "POSTGRES_DB=fundshare"
+      - "POSTGRES_PASSWORD=mypassword"
+      - "POSTGRES_USER=fundshare"
+    volumes:
+      - db-e2e:/var/lib/postgresql/data
   api:
     image: "fundshare-backend"
     ports:
       - "8082:8080"
     depends_on:
       - db
+  api-e2e:
+    image: "fundshare-backend-e2e"
+    ports:
+      - "8083:8080"
+    depends_on:
+      - db-e2e
 volumes:
   db:
+  db-e2e:

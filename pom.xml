@@ -22,6 +22,9 @@
 		<profile>
 			<id>prod</id>
 		</profile>
+		<profile>
+			<id>e2e</id>
+		</profile>
 	</profiles>	
 	<dependencies>
 		<dependency>
