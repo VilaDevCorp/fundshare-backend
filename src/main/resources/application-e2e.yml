@@ -3,8 +3,7 @@ server:
 spring:
   datasource:
     password: mypassword
-    url: jdbc:postgresql://localhost:5436/fundshare
-    # url: jdbc:postgresql://db-e2e:5432/fundshare
+    url: jdbc:postgresql://db-e2e:5432/fundshare
     username: fundshare
   application:
     name: fundshare-api
