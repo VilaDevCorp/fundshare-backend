@@ -13,7 +13,7 @@ auth:
     domain: localhost
     path: /
     secure: true
-    httpOnly: false
+    httpOnly: true
     sameSite: None
 # logging:
 #   level:
