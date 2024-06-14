@@ -10,7 +10,7 @@ mail:
   enabled: false
 auth:
   cookie:
-    domain: localhost
+    domain: 
     path: /
     secure: true
     httpOnly: true
