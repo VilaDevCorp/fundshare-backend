@@ -38,7 +38,8 @@ public class TestController {
     @Autowired
     private UserRepository userRepository;
 
-    @DeleteMapping("/test/database")
+
+    @DeleteMapping("/public/test/database")
     public void cleanUpDatabase() {
         validationCodeRepository.deleteAll();
         requestRepository.deleteAll();
@@ -49,7 +50,7 @@ public class TestController {
         userRepository.deleteAll();
     }
 
-    @PostMapping("/test/populate")
+    @PostMapping("/public/test/populate")
     public void populateDatabase() {
         // Create users
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
