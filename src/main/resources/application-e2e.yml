@@ -12,9 +12,9 @@ auth:
   cookie:
     domain: localhost
     path: /
-    secure: false
+    secure: true
     httpOnly: false
-    sameSite: Lax
+    sameSite: None
 # logging:
 #   level:
 #     org:
