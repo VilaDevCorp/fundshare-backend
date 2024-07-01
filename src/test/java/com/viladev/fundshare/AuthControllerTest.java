@@ -347,13 +347,13 @@ class AuthControllerTest {
 
 	@Test
 	void When_ResetPassword_Ok() throws Exception {
-		mockMvc.perform(post("/api/public/forgottenpassword/" + ACTIVE_USER_USERNAME))
+		mockMvc.perform(post("/api/public/forgotten-password/" + ACTIVE_USER_USERNAME))
 				.andExpect(status().isOk());
 
 		ValidationCode validationCode = validationCodeRepository.findByUserUsernameAndTypeOrderByCreatedAtDesc(
 				ACTIVE_USER_USERNAME, ValidationCodeTypeEnum.RESET_PASSWORD.getType()).get(0);
 
-		mockMvc.perform(post("/api/public/resetpassword/" + ACTIVE_USER_USERNAME + "/" + validationCode.getCode())
+		mockMvc.perform(post("/api/public/reset-password/" + ACTIVE_USER_USERNAME + "/" + validationCode.getCode())
 				.content(OTHER_USER_PASSWORD)).andExpect(status().isOk());
 
 		LoginForm formOldPass = new LoginForm(ACTIVE_USER_USERNAME, ACTIVE_USER_PASSWORD);

@@ -168,7 +168,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 
-    @PostMapping("/public/forgottenpassword/{username}")
+    @PostMapping("/public/forgotten-password/{username}")
     public ResponseEntity<ApiResponse<Void>> sendResetPasswordCode(@PathVariable String username)
             throws InstanceNotFoundException, SendEmailException, EmptyFormFieldsException,
             UserAlreadyValidatedException {
@@ -179,7 +179,7 @@ public class AuthController {
         return ResponseEntity.ok().body(new ApiResponse<>());
     }
 
-    @PostMapping("/public/resetpassword/{username}/{validationCode}")
+    @PostMapping("/public/reset-password/{username}/{validationCode}")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@PathVariable String username,
             @PathVariable String validationCode, @RequestBody String newPassword)
             throws InstanceNotFoundException, EmptyFormFieldsException {
