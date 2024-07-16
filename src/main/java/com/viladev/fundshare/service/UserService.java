@@ -35,7 +35,7 @@ import com.viladev.fundshare.repository.ValidationCodeRepository;
 import com.viladev.fundshare.utils.ValidationCodeTypeEnum;
 
 @Service
-@Transactional (rollbackFor = Exception.class)
+@Transactional(rollbackFor = Exception.class)
 public class UserService {
 
     private final AuthenticationManager authenticationManager;
@@ -165,13 +165,13 @@ public class UserService {
             throw new InstanceNotFoundException();
         }
         ValidationCode lastValidationCode = validationCodeList.get(0);
+        if (lastValidationCode.getCode().equals(code) && lastValidationCode.isUsed()) {
+            throw new AlreadyUsedValidationCodeException("Validation code was already used");
+        }
         Calendar expirationDate = (Calendar) lastValidationCode.getCreatedAt().clone();
         expirationDate.add(Calendar.MINUTE, ValidationCode.EXPIRATION_MINUTES);
-        if (!expirationDate.after(Calendar.getInstance())) {
+        if (lastValidationCode.getCode().equals(code) && !expirationDate.after(Calendar.getInstance())) {
             throw new ExpiredValidationCodeException("Validation code expired");
-        }
-        if (lastValidationCode.isUsed()) {
-            throw new AlreadyUsedValidationCodeException("Validation code was already used");
         }
         if (!lastValidationCode.getCode().equals(code)) {
             throw new IncorrectValidationCodeException("Incorrect validation code");
