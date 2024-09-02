@@ -1,12 +1,13 @@
 spring:
+  config:
+    import: .env.properties
   datasource:
     password: ${DB_PASS}
     url: jdbc:postgresql://db:5432/fundshare
     username: fundshare
   mail:
     password: ${MAIL_PASS}
-  config:
-    import: file:.env
+  
 cors:
   allowed-origins: https://fundshare.dviladev.com
 auth:

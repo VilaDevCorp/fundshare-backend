@@ -3,7 +3,7 @@ services:
     image: "postgres:16-alpine"
     environment:
       - "POSTGRES_DB=fundshare"
-      - "POSTGRES_PASSWORD=mypassword"
+      - "POSTGRES_PASSWORD=${DB_PASS}"
       - "POSTGRES_USER=fundshare"
     volumes:
       - db:/var/lib/postgresql/data
