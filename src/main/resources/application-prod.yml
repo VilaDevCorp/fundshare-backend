@@ -1,13 +1,17 @@
 spring:
   datasource:
-    password: mypassword
+    password: ${DB_PASS}
     url: jdbc:postgresql://db:5432/fundshare
     username: fundshare
+  mail:
+    password: ${MAIL_PASS}
+  config:
+    import: file:.env
 cors:
   allowed-origins: https://fundshare.dviladev.com
 auth:
   jwt:
-    secret: mysecret
+    secret: ${JWT_SECRET}
     expiration: 86400000
     issuer: fundshare
   cookie:
