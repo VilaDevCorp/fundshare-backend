@@ -49,7 +49,7 @@ jobs:
             set -e
             cd services/fundshare-backend
             git checkout main
-            git pull https://davilasanvilar:${{ secrets.GIT_PAT }}@github.com/davilasanvilar/fundshare-backend.git
+            git pull https://davilasanvilar:${{ secrets.GIT_PAT }}@github.com/VilaDevCorp/fundshare-backend.git
             mvn package -B -DskipTests
             docker build -t fundshare-backend .
             docker build -t fundshare-backend-e2e  -f DockerfilePre .
