@@ -25,7 +25,7 @@ spring:
           starttls:
             enable: true
 cors:
-  allowed-origins: http://192.168.0.111:5173
+  allowed-origins: http://192.168.1.129:5173
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
   allowed-headers: Accept,Content-Type,credentials,Content-Length,Accept-Encoding,X-API-CSRF,Authorization
   exposed-headers: Set-Cookie
@@ -36,21 +36,21 @@ mail:
     account-activation: Account Activation
     password-reset: Password Reset
   message:
-    account-activation: Click on the link below to activate your account
-    password-reset: Click on the link below to reset your password
+    account-activation: Click on the link below to activate your FundShare account
+    password-reset: Click on the link below to reset your password of your FundShare account
 auth:
   jwt:
     secret: mysecret
     expiration: 86400000
     issuer: fundshare
   cookie:
-    domain: 192.168.0.111
+    domain: 192.168.1.129
     path: /
     secure: false
     httpOnly: false
     sameSite: Lax
 frontend:
-  url: http://192.168.0.111:5173
+  url: http://192.168.1.129:5173
 # logging:
 #   level:
 #     org:
