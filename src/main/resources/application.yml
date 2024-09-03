@@ -17,7 +17,6 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: viladevapps@gmail.com
-    password: iabn dhoj wpyc zzwu
     properties:
       mail:
         smtp:
