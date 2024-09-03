@@ -46,6 +46,7 @@ jobs:
           password: ${{ secrets.CONTABO_PASSWORD }}
           port: 22
           script: |
+            set -e
             cd services/fundshare-backend
             git checkout main
             ${{ secrets.GIT_PULL_COMMAND }}
