@@ -1,10 +1,10 @@
 package com.viladev.fundshare.model;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.validator.constraints.Length;
 
 import jakarta.persistence.CascadeType;
@@ -41,6 +41,7 @@ public class Payment extends BaseEntity {
     Group group;
 
     @OneToMany(mappedBy = "payment", orphanRemoval = true, cascade = CascadeType.ALL)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     List<UserPayment> userPayments = new ArrayList<>();
 
     public Payment(String description, User createdBy, Group group) {

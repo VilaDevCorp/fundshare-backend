@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.validator.constraints.Length;
 import org.springframework.data.annotation.Version;
 
@@ -42,12 +44,15 @@ public class Group extends BaseEntity {
     private Long version;
 
     @OneToMany(mappedBy = "group", orphanRemoval = true, cascade = CascadeType.ALL)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     List<GroupUser> groupUsers = new ArrayList<>();
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<Request> requests = new HashSet<>();
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<Payment> payments = new HashSet<>();
 
     public Group(String name, String description, User createdBy) {
