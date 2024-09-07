@@ -204,6 +204,9 @@ public class PaymentService {
         List<DebtDto> debts = new ArrayList<>();
 
         for (UserPaymentDto userPayment : userPayments) {
+            if (userPayment.getPayment().getCreatedBy().getUsername().equals(userPayment.getUser().getUsername())) {
+                continue;
+            }
             DebtDto debtElement = debts.stream()
                     .filter((debt) -> (debt.getPayer().getUsername().equals(userPayment.getUser().getUsername())
                             && debt.getPayee().getUsername()
