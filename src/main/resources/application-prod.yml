@@ -21,7 +21,7 @@ auth:
     httpOnly: true
     sameSite: Strict
 minio:
-  url: http://172.17.0.1:9000
+  url: https://minio.dviladev.com
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
 frontend:
