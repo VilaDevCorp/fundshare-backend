@@ -3,7 +3,6 @@ package com.viladev.fundshare.service;
 import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
-
 import javax.management.InstanceNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.viladev.fundshare.auth.AuthResult;
 import com.viladev.fundshare.auth.JwtUtils;
 import com.viladev.fundshare.exceptions.EmailAlreadyInUseException;
@@ -203,5 +201,4 @@ public class UserService {
         user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
         userRepository.save(user);
     }
-
 }

@@ -23,8 +23,12 @@ spring:
           auth: true
           starttls:
             enable: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 cors:
-  allowed-origins: http://192.168.1.129:5173
+  allowed-origins: http://192.168.1.131:5173
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
   allowed-headers: Accept,Content-Type,credentials,Content-Length,Accept-Encoding,X-API-CSRF,Authorization
   exposed-headers: Set-Cookie
@@ -43,13 +47,18 @@ auth:
     expiration: 86400000
     issuer: fundshare
   cookie:
-    domain: 192.168.1.129
+    domain: 192.168.1.131
     path: /
     secure: false
     httpOnly: false
     sameSite: Lax
 frontend:
-  url: http://192.168.1.129:5173
+  url: http://192.168.1.131:5173
+minio:
+  url: http://localhost:9000
+  access-key: myminioadmin
+  secret-key: 123456abC
+  bucket: fundshare
 # logging:
 #   level:
 #     org:

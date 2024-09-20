@@ -68,11 +68,13 @@ public class GroupService {
 
     private final GroupUserRepository groupUserRepository;
 
+    private final MinioService minioService;
+
     @Autowired
     public GroupService(GroupRepository groupRepository, UserRepository userRepository,
             RequestRepository requestRepository, PaymentRepository paymentRepository,
             UserPaymentRepository userPaymentRepository, PaymentService paymentService,
-            GroupUserRepository groupUserRepository) {
+            GroupUserRepository groupUserRepository, MinioService minioService) {
 
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
@@ -81,6 +83,7 @@ public class GroupService {
         this.userPaymentRepository = userPaymentRepository;
         this.paymentService = paymentService;
         this.groupUserRepository = groupUserRepository;
+        this.minioService = minioService;
     }
 
     public Group createGroup(String name, String description) throws EmptyFormFieldsException {
@@ -117,7 +120,20 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public Group getGroupById(UUID id) throws InstanceNotFoundException {
-        return groupRepository.findById(id).orElseThrow(() -> new InstanceNotFoundException());
+        Optional<Group> group = groupRepository.findById(id);
+        if (!group.isPresent()) {
+            throw new InstanceNotFoundException();
+        }
+        Group result = group.get();
+        result.getGroupUsers().stream().forEach(groupUser -> {
+            try {
+                groupUser.getUser()
+                        .setPictureUrl(minioService.getProfilePictureUrl(groupUser.getUser().getUsername()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        return result;
     }
 
     @Transactional(readOnly = true)

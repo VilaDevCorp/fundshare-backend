@@ -18,10 +18,13 @@ public class UserDto extends BaseEntityDto {
 
     UserConf conf = new UserConf();
 
+    String pictureUrl;
+
     public UserDto(User user) {
         this.email = user.getEmail();
         this.username = user.getUsername();
         this.conf = user.getConf();
+        this.pictureUrl = user.getPictureUrl();
     }
 
     public static UserDto[] toUserDtoArray(User[] users) {

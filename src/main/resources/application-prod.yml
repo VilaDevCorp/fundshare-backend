@@ -7,7 +7,6 @@ spring:
     username: fundshare
   mail:
     password: ${MAIL_PASS}
-  
 cors:
   allowed-origins: https://fundshare.dviladev.com
 auth:
@@ -21,6 +20,9 @@ auth:
     secure: true
     httpOnly: true
     sameSite: Strict
+minio:
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
 frontend:
   url: https://fundshare.dviladev.com
 # logging:

@@ -55,15 +55,19 @@ public class PaymentService {
 
     private final GroupUserRepository groupUserRepository;
 
+    private final MinioService minioService;
+
     @Autowired
     public PaymentService(GroupRepository groupRepository, UserRepository userRepository,
             PaymentRepository paymentRepository,
-            UserPaymentRepository userPaymentRepository, GroupUserRepository groupUserRepository) {
+            UserPaymentRepository userPaymentRepository, GroupUserRepository groupUserRepository,
+            MinioService minioService) {
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
         this.userPaymentRepository = userPaymentRepository;
         this.groupUserRepository = groupUserRepository;
+        this.minioService = minioService;
     }
 
     public Payment createPayment(PaymentForm paymentForm)
@@ -204,6 +208,7 @@ public class PaymentService {
         List<DebtDto> debts = new ArrayList<>();
 
         for (UserPaymentDto userPayment : userPayments) {
+            // If the user has paid to himself, we skip the payment
             if (userPayment.getPayment().getCreatedBy().getUsername().equals(userPayment.getUser().getUsername())) {
                 continue;
             }
@@ -216,10 +221,24 @@ public class PaymentService {
                                     && debt.getPayee().getUsername().equals(userPayment.getUser().getUsername())))
                     .findFirst().orElse(null);
             if (debtElement == null) {
+                try {
+                    userPayment.getUser()
+                            .setPictureUrl(minioService.getProfilePictureUrl(userPayment.getUser().getUsername()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                try {
+                    userPayment.getPayment().getCreatedBy()
+                            .setPictureUrl(minioService
+                                    .getProfilePictureUrl(userPayment.getPayment().getCreatedBy().getUsername()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 debtElement = new DebtDto(userPayment.getPayment().getCreatedBy(), userPayment.getUser(),
                         userPayment.getAmount());
                 debts.add(debtElement);
             } else {
+
                 if (debtElement.getPayer().getUsername()
                         .equals(userPayment.getPayment().getCreatedBy().getUsername())) {
                     debtElement.setAmount(debtElement.getAmount() + userPayment.getAmount());

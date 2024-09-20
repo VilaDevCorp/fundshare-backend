@@ -20,12 +20,14 @@ public class UserWithBalanceDto extends BaseEntityDto {
 
     UserConf conf = new UserConf();
 
+    String pictureUrl;
+
     public UserWithBalanceDto(User user) {
         this.email = user.getEmail();
         this.username = user.getUsername();
         this.balance = user.getBalance();
         this.conf = user.getConf();
-
+        this.pictureUrl = user.getPictureUrl();
     }
 
     @Override
