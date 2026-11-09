@@ -7,6 +7,7 @@ services:
       - "POSTGRES_USER=fundshare"
     volumes:
       - db:/var/lib/postgresql/data
+    restart: unless-stopped
   db-e2e:
     image: "postgres:16-alpine"
     environment:
@@ -15,18 +16,21 @@ services:
       - "POSTGRES_USER=fundshare"
     volumes:
       - db-e2e:/var/lib/postgresql/data
+    restart: unless-stopped
   api:
     image: "fundshare-backend"
     ports:
       - "8082:8080"
     depends_on:
       - db
+    restart: unless-stopped
   api-e2e:
     image: "fundshare-backend-e2e"
     ports:
       - "8083:8080"
     depends_on:
       - db-e2e
+    restart: unless-stopped
 volumes:
   db:
   db-e2e:
